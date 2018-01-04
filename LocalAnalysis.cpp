@@ -15,7 +15,7 @@
 #include <array>
 
 using namespace llvm;
-using namespace llvm::privAnalysis;
+using namespace llvm::privADT;
 using namespace llvm::splitBB;
 using namespace llvm::localAnalysis;
 

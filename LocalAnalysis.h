@@ -17,7 +17,7 @@
 
 #include "ADT.h"
 
-using namespace llvm::privAnalysis;
+using namespace llvm::privADT;
 
 namespace llvm{
 namespace localAnalysis {
