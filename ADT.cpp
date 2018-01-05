@@ -14,7 +14,7 @@
 
 
 namespace llvm {
-namespace privAnalysis {
+namespace privADT {
 
 
 // capability number to string for ROSA

@@ -25,7 +25,7 @@
 #define CAP_TOTALNUM (CAP_LAST_CAP + 1)
 
 namespace llvm {
-namespace privAnalysis {
+namespace privADT {
 
 // type definition
 
@@ -47,6 +47,7 @@ typedef std::unordered_map<BasicBlock*, Function*> BBFuncTable_t;
 
 // The unique capabiltiy set for all basic blocks mapped to the number of its CAPs
 typedef std::map<CAPArray_t, int> CAPSet_t;
+
 
 // --------------------------- //
 // Data manipulation functions

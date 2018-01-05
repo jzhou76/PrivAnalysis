@@ -8,7 +8,7 @@
  **/
 
 #include "PrivAnalysis.h"
-#include "CompressedCallGraph.h"
+#include "CompressCallGraph.h"
 #include "ADT.h"
 #include "LocalAnalysis.h"
 #include <sys/capability.h>
@@ -17,7 +17,7 @@
 using namespace llvm;
 using namespace privADT;
 using namespace localAnalysis;
-using namespace compressedCG;
+using namespace compressCG;
 using namespace privAnalysis;
 
 void getFamiliar(Module &M);
@@ -45,8 +45,8 @@ PrivAnalysis::PrivAnalysis() : ModulePass(ID) {}
 bool PrivAnalysis::runOnModule(Module &M) {
     errs() << "Hello from PrivAnalysis pass!\n";
 
-    CompressedCG &ccg = getAnalysis<CompressedCG>();
-    errs() << "ccfNum = " << ccg.ccgNum << "\n";
+    CompressCG &ccg = getAnalysis<CompressCG>();
+    /* errs() << "ccfNum = " << ccg.ccgNum << "\n"; */
     
     return false;
 }
@@ -55,11 +55,11 @@ bool PrivAnalysis::runOnModule(Module &M) {
  * specify which passes should be run before PrivAnalysis
  * */
 void PrivAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
-    // run CompressedCG pass first
-    AU.addRequired<CompressedCG>();  
+    // run CompressCG pass first
+    AU.addRequired<CompressCG>();  
 
     // still don't fully get why we need this...
-    Info.setPreservesAll();
+    AU.setPreservesAll();
 }
 
 char PrivAnalysis::ID = 0;

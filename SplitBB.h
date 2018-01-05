@@ -24,7 +24,7 @@
 #define SPLIT_NEXT  2
 
 
-using namespace llvm::privAnalysis;
+using namespace llvm::privADT;
 
 namespace llvm {
 namespace splitBB {
