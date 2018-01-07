@@ -15,9 +15,13 @@
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <unordered_set>
+
+#define ENTRY_FUNC "main"
 
 using namespace llvm;
 using namespace std;
@@ -33,22 +37,41 @@ public:
     // the Module this call graph represents
     Module &M;
 
-    map<Function *, PrivCallGraphNode *> funcNodeMap;
-    map<PrivCallGraphNode *, Function *> nodeFuncMap;
+    // entry function, aka main
+    Function *entryFunc;
 
-    void addNode(Function *F);
+    // get the PrivCallGraphNode by its Function
+    PrivCallGraphNode *getNode(Function *F);
 
-    void dump();
+    // check if a function exists in the call graph
+    bool hasFunction(Function *F) const;
+
+    // just add a PrivCallGraphNode for function F
+    PrivCallGraphNode *addFunctionNode(Function *F);
+
+    // add caller-callee relation
+    void addCallRelation(Function *caller, Function *callee);
+    // delete a PrivCallGraphNode and all its relations
+    void removeNode(PrivCallGraphNode *node);
+
+    // print call relations of the program
+    void dump() const;
 private:
     // all functions
-    unordered_set<Function *> functions;
+    /* unordered_set<Function *> functions; */
+
     // all PrivCallGraphNodes 
     unordered_set<PrivCallGraphNode *> nodes;
 
-    bool hasFunction(Function *F) const;
+    // map a Function to a PrivCallGraphNode
+    map<Function *, PrivCallGraphNode *> funcNodeMap;
 
+    // remove all unreachable functions 
+    void removeUnreachableFuncs(PrivCallGraphNode *node);
+    void DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable);
     
 };  // end of class PrivCallGraph
+
 
 class PrivCallGraphNode {
 public:
@@ -57,12 +80,20 @@ public:
     // return corresponding function
     Function* getFunction() const;
 
+    bool hasCaller(PrivCallGraphNode *caller) const;
+    bool hasCallee(PrivCallGraphNode *callee) const;
+
     // print information of this node
-    void dump();
+    void dump() const;
+
 private:
+    friend class PrivCallGraph;
     Function &F;
-    unordered_set<PrivCallGraphNode*> callers;  // prev-node
-    unordered_set<PrivCallGraphNode*> calees;  // post-node
+    unordered_set<PrivCallGraphNode *> callers;  // prev-node
+    unordered_set<PrivCallGraphNode *> callees;  // post-node
+
+    inline void addCaller(PrivCallGraphNode *caller);
+    inline void addCallee(PrivCallGraphNode *callee);
 };
 }  // end of privCallGraph namespace
 
