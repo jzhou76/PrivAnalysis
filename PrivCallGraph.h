@@ -56,6 +56,9 @@ public:
 
     // print call relations of the program
     void dump() const;
+
+    // print all node names and addresses
+    void print() const;
 private:
     // all functions
     /* unordered_set<Function *> functions; */

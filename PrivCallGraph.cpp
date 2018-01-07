@@ -21,7 +21,10 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
         if (mi->isDeclaration()) continue;
 
         // check if this is the entry function
-        if (mi->getName().equals(ENTRY_FUNC)) entryFunc = &*mi;
+        if (mi->getName().equals(ENTRY_FUNC)) {
+            entryFunc = &*mi;
+            addFunctionNode(entryFunc);
+        }
 
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
             // iterate over every basic block
@@ -30,27 +33,26 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
                 if (ci != NULL) {
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
                     if (callee->isDeclaration()) continue;
-                    /* errs() << funcName << " calls " << callee->getName() << "\n"; */
                     // add caller-callee relation into the call graph
                     addCallRelation(&*mi, callee);
-                } else {
-                    // this function doesn't call any other functions
-                    // it's possibe it is not called by any other functions;
-                    /* addFunctionNode(&*mi); */
-                }
+                } 
             }
         }
     }
 
+    // remove unrechable functions from main
     removeUnreachableFuncs(funcNodeMap[entryFunc]);
 
     dump();
 }
 
+// return the Function a PrivCallGraphNode represents
 PrivCallGraphNode *PrivCallGraph::getNode(Function *F) {
     return funcNodeMap[F];
 }
 
+
+// add a caller-callee relation 
 void PrivCallGraph::addCallRelation(Function *caller, Function *callee) {
     // in case the caller or callee has not been added to the call graph
     PrivCallGraphNode *callerNode = addFunctionNode(caller);
@@ -61,14 +63,17 @@ void PrivCallGraph::addCallRelation(Function *caller, Function *callee) {
         return;
     }
     
+    // add caller and callee
     callerNode->callees.insert(calleeNode);
     calleeNode->callers.insert(callerNode);
 }
+
 
 // add a function to the call graph
 PrivCallGraphNode *PrivCallGraph::addFunctionNode(Function *F) {
     if (funcNodeMap.find(F) == funcNodeMap.end()) {
         // got a new function
+        /* errs() << "add " << F->getName() << " to the call graph\n"; */
         PrivCallGraphNode *node = new PrivCallGraphNode(*F);
         nodes.insert(node);
         funcNodeMap.insert(pair<Function *, PrivCallGraphNode *>(F, node));
@@ -99,23 +104,28 @@ void PrivCallGraph::removeNode(PrivCallGraphNode *node) {
     delete node;
 }
 
+
 /*
  * removeUnreachableFuncs() removes all functions that can not be reached from main() function
  *
  * Start from the entry function, and do a DFS.
  * */
-void PrivCallGraph::removeUnreachableFuncs(PrivCallGraphNode *node) {
+void PrivCallGraph::removeUnreachableFuncs(PrivCallGraphNode *entry) {
     unordered_set<PrivCallGraphNode *> reachable;
-    DFS(node, reachable);
-    
+    unordered_set<PrivCallGraphNode *> unreachable;
+    DFS(entry, reachable);
+
     // remove all nodes that don't appear in reachable
     for (auto ni = nodes.begin(); ni != nodes.end(); ni++) {
         PrivCallGraphNode *node = *ni;
         if (reachable.find(node) == reachable.end()) {
             // this node is not reachable from entry function; remove it
-            removeNode(node);
+            /* errs() << "remove " << node->F.getName() << "\n"; */
+            unreachable.insert(node);
         }
     }
+
+    for (auto i = unreachable.begin(); i != unreachable.end(); i++) removeNode(*i);
 }
 void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable) {
     if (reachable.find(node) != reachable.end()) return;
@@ -124,12 +134,20 @@ void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode
     for (auto i = node->callees.begin(); i != node->callees.end(); i++) { DFS(*i, reachable); }
 }
 
+
 // check if a function exists in the call graph
 bool PrivCallGraph::hasFunction(Function *F) const {
     if (funcNodeMap.find(F) != funcNodeMap.end()) return true;
     else return false;
 }
 
+
+void PrivCallGraph::print() const {
+    for (auto i = nodes.begin(); i != nodes.end(); i++) {
+        errs() << (*i)->F.getName() << ": " << *i << "\n";
+    }
+    errs() << "\n";
+}
 // print out call relations
 void PrivCallGraph::dump() const {
     errs() << "\nCalling relations of this program: \n";
