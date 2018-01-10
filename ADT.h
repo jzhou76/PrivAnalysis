@@ -93,6 +93,7 @@ void dumpCAPArray(const CAPArray_t &A);
 // param: CT - the CAPTable to dump
 void dumpCAPTable(const FuncCAPTable_t &CT);
 
+/* void printFunc(set<Function *> &func); */
 } // namespace privAnalysis
 } // namepsace llvm
 

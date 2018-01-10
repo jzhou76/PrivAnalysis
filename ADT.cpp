@@ -215,6 +215,12 @@ void dumpCAPTable(const FuncCAPTable_t &CT)
     errs() << "\n";
 }
 
+/* void printFunc(set<Function *> &func) { */
+/*     for (auto i = func.begin(); i != func.end(); i++) { */
+/*         errs() << i->getName() << ": " << *i << "\n"; */
+/*     } */
+/* } */
+
 
 } // namespace privAnalysis
 } // namepsace llvm

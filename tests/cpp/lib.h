@@ -1,5 +1,4 @@
-#ifndef LIB_H
-#define LIB_H
+namespace lib {
 
 void uncalled_fun0();
 void uncalled_fun1();
@@ -10,4 +9,4 @@ void f3();
 void f4();
 void f5();
 
-#endif
+}

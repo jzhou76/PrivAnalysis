@@ -45,7 +45,7 @@ PrivAnalysis::PrivAnalysis() : ModulePass(ID) {}
 bool PrivAnalysis::runOnModule(Module &M) {
     errs() << "Hello from PrivAnalysis pass!\n";
 
-    CompressCG &ccg = getAnalysis<CompressCG>();
+    /* CompressCG &ccg = getAnalysis<CompressCG>(); */
     /* errs() << "ccfNum = " << ccg.ccgNum << "\n"; */
     
     return false;

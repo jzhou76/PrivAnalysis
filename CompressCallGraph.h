@@ -14,6 +14,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/ADT/SCCIterator.h"
 #include "llvm/Support/raw_ostream.h"
 #include "PrivCallGraph.h"
 

@@ -27,5 +27,13 @@ void CompressCFG::getAnalysisUsage(AnalysisUsage &AU) const {
 
 bool CompressCFG::runOnModule(Module &M) {
     /* CompressCG &CCG = getAnalysis<CompressCG>(); */
+
+    return false;
 }
 
+
+char CompressCFG::ID = 0;
+static RegisterPass<CompressCFG> A("compress_cfg",  // name used as an arugment for opt
+                                    "Compress Control Flow Gragh pass",
+                                    false,
+                                    false);  // analysis pass

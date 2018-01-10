@@ -40,6 +40,7 @@ public:
     // entry function, aka main
     Function *entryFunc;
 
+
     // get the PrivCallGraphNode by its Function
     PrivCallGraphNode *getNode(Function *F);
 

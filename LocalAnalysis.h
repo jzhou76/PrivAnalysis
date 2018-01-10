@@ -16,6 +16,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "ADT.h"
+#include <set>
 
 using namespace llvm::privADT;
 
@@ -55,6 +56,9 @@ public:
 
     // Print out information for debugging purposes
     void print(raw_ostream &O, const Module *M) const;
+
+    std::set<Function *> funcs;
+    void collectFunc(Module &M);
 private:
     // Retrieve all capabilities from params of function call
     void RetrieveAllCAP(CallInst *CI, CAPArray_t &CAParray);

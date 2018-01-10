@@ -1,6 +1,8 @@
 #include "lib.h"
 #include <stdio.h>
 
+namespace lib {
+
 void uncalled_fun0() {
     printf("actually doing nothing but printing\n");
 }
@@ -32,12 +34,6 @@ void f4() {
 
 void f5() {
     /* printf("hello from f5()\n"); */
-    int i = 0;
-
-    while (i < 10) {
-        i++;
-        f4();
-    }
 }
 
-
+}

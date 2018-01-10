@@ -1,8 +1,8 @@
-BUILD_DIR = ../../../../../build
+BUILD_DIR = ../../../../../../build
 
 all:
-	clang -emit-llvm -c hello.c lib.c priv.c
-	llvm-link hello.bc lib.bc priv.bc -o test.bc
+	clang++ -emit-llvm -c hello.cpp lib.cpp
+	llvm-link hello.bc lib.bc -o test.bc
 
 two:
 	clang -emit-llvm -c test2.c

@@ -15,6 +15,11 @@ using namespace privCallGraph;
 
 // constructor
 PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
+    /* errs() << "\nFunctions from PrivCallGraph's constructor:\n"; */
+    /* for (auto i = M.begin(); i != M.end(); i++) errs() << i->getName() << ": " << &*i << "\n"; */
+    /* errs() << "\n"; */
+
+
     // build the original call graph
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         // skip over library functions
@@ -23,6 +28,7 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
         // check if this is the entry function
         if (mi->getName().equals(ENTRY_FUNC)) {
             entryFunc = &*mi;
+            /* errs() << "#### main's address: " << entryFunc << "\n"; */
             addFunctionNode(entryFunc);
         }
 
@@ -32,6 +38,27 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
                 CallInst *ci = dyn_cast<CallInst>(&*bbi);
                 if (ci != NULL) {
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
+                    if (mi->getName().equals("foo") || mi->getName().equals("indirect_foo")) {
+                        errs() << mi->getName() <<": ====print out===\n";
+                        ci->getArgOperand(ci->getNumOperands() - 1)->dump();
+                    }
+                    if (callee == NULL) {
+                        // this is an indirect call
+                        /* ci->getCalledValue()->dump(); */
+                        /* ci->getArgOperand(1)->dump(); */
+                        LoadInst *li = dyn_cast<LoadInst>(ci->getCalledValue());
+                        if (li != NULL) errs() << "YES\n";
+                        for (auto ui = mi->user_begin(); ui != mi->user_end(); ui++) {
+                            /* errs() << ui->getName() << "\n"; */
+                            /* CallInst *_ci = dyn_cast<CallInst>(*ui); */
+                            /* Function *f3 = dyn_cast<Function>(_ci->getArgOperand(2)); */
+                            /* f3->dump(); */
+                            /* for (auto i = f3->arg_begin(); i != f3->arg_end(); ++i) { */
+                            /*     i->dump(); */
+                            /* } */
+                        }
+                        continue;
+                    }
                     if (callee->isDeclaration()) continue;
                     // add caller-callee relation into the call graph
                     addCallRelation(&*mi, callee);
@@ -43,7 +70,7 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
     // remove unrechable functions from main
     removeUnreachableFuncs(funcNodeMap[entryFunc]);
 
-    dump();
+    /* dump(); */
 }
 
 // return the Function a PrivCallGraphNode represents
@@ -142,9 +169,10 @@ bool PrivCallGraph::hasFunction(Function *F) const {
 }
 
 
+// print all function names and their addresses
 void PrivCallGraph::print() const {
-    for (auto i = nodes.begin(); i != nodes.end(); i++) {
-        errs() << (*i)->F.getName() << ": " << *i << "\n";
+    for (auto i = funcNodeMap.begin(); i != funcNodeMap.end(); i++) {
+        errs() << i->first->getName() << ": " << i->first << "\n";
     }
     errs() << "\n";
 }

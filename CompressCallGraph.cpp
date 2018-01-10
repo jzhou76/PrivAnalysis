@@ -44,25 +44,39 @@ void CompressCG::getAnalysisUsage(AnalysisUsage &AU) const {
 bool CompressCG::runOnModule(Module &M) {
     errs() << "Hello from CompressCG Pass!\n";
 
-    /* errs() << "\nFunctions from CompressCG:\n"; */
-    /* for (auto i = M.begin(); i != M.end(); i++) errs() << i->getName() << ": " << &*i << "\n"; */
+    CallGraph CG(M);
+    /* CG.dump(); */
+    for (auto i = CG.begin(); i != CG.end(); i++) {
+        if (i->first == NULL) {
+            errs() << "found an NULL function\n";
+        }
+        /* const Function *f = dyn_cast<Function>(i->first); */
+        /* if (f != NULL) errs() << "YES IT IS\n"; */
+        /* else errs() << "NO\n"; */
+    }
 
+    /* errs() << "callingNode dump:\n"; */
+    CallGraphNode *callingNode = CG.getExternalCallingNode();
+    for (auto cni = callingNode->begin(); cni != callingNode->end(); cni++) cni->second->dump();
+    /* callingNode->dump(); */
+    /* errs() << "callsNode dump:\n"; */
+    /* CallGraphNode *callsNode = CG.getCallsExternalNode(); */
+    /* callsNode->dump(); */
+
+
+    // get LocalAnalysis's result
     LocalAnalysis &LA = getAnalysis<LocalAnalysis>();
     funcCapMap = LA.FuncCAPTable;
     bbCapMap = LA.BBCAPTable;
 
-    /* errs() << "\nFunctions from LocalAnalysis:\n"; */
-    /* for (auto i = LA.funcs.begin(); i != LA.funcs.end(); i++) errs() << (*i)->getName() << ": " << *i << "\n"; */
-    /* errs() << "\n"; */
-    
     // build the original call graph
     privCG = new PrivCallGraph(M);
-    privCG->print();
+    /* privCG->print(); */
 
     // remove unreachable functions and blocks
     removeUnreachableFuncs(privCG);
     
-    /* debugHelper(M); */
+    debugHelper(M);
     return false;
 }
 

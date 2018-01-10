@@ -58,6 +58,7 @@ void LocalAnalysis::RetrieveAllCAP(CallInst *CI, CAPArray_t &CAPArray)
 // param: Module
 bool LocalAnalysis::runOnModule(Module &M)
 {
+    errs() << "Hello from LocalAnalysis Pass!\n";
     // retrieve all data for later use
     SplitBB &SB = getAnalysis<SplitBB>();
     BBFuncTable = SB.BBFuncTable;
@@ -65,9 +66,10 @@ bool LocalAnalysis::runOnModule(Module &M)
   
     // find all users of targeted function
     Function *F = M.getFunction(PRIVRAISE);
+    if (F == NULL) return false;
 
     // Protector: didn't find any function TARGET_FUNC
-    assert(F && "Didn't find function PRIV_RAISE function");
+    /* assert(F && "Didn't find function PRIV_RAISE function"); */
 
     // Find all user instructions of function in the module
     for (Value::user_iterator UI = F->user_begin(), UE = F->user_end();
@@ -90,7 +92,12 @@ bool LocalAnalysis::runOnModule(Module &M)
         AddToFuncCAPTable(FuncCAPTable, CI->getParent()->getParent(), CAParray);
     }
 
+    collectFunc(M);
     return false;
+}
+
+void LocalAnalysis::collectFunc(Module &M) {
+    for (auto i = M.begin(); i != M.end(); i++) funcs.insert(&*i);
 }
 
 
