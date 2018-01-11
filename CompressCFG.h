@@ -15,20 +15,33 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
-#include "PrivCallGraph.h"
 
+#include "PrivGraph.h"
+#include "CompressCallGraph.h"
 #include "ADT.h"
 #include <unordered_map>
+
+using namespace privGraph;
+using namespace compressCG;
 
 namespace compressCFG {
 struct CompressCFG : public ModulePass {
 public:
     static char ID;
+
     // constructor
     CompressCFG();
 
+    //
+    unordered_map<Function *, PrivCFG *> funcPrivCFGMap;
+
+    // runOnModule
     virtual bool runOnModule(Module &M);
+
+    //remove "unprivileged" basic blocks from all functions reachable from main.
+    void removeUnprivBB(CompressCG &CGG);
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 };  // end of CompressCFG
