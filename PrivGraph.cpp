@@ -6,24 +6,26 @@
  *
  * PrivCallGraph only contains nodes corresponding to user-defined functions while ignores library functions.
  *
+ * !TODO!: handle indirect function calls
  * */
 
-#include "PrivCallGraph.h"
+#include "PrivGraph.h"
 
 using namespace llvm;
-using namespace privCallGraph;
+using namespace privGraph;
+
+//
+// ===============================
+// implementation of PrivCallGraph
+// ===============================
+//
 
 // constructor
 PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
-    /* errs() << "\nFunctions from PrivCallGraph's constructor:\n"; */
-    /* for (auto i = M.begin(); i != M.end(); i++) errs() << i->getName() << ": " << &*i << "\n"; */
-    /* errs() << "\n"; */
-
-
     // build the original call graph
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         // skip over library functions
-        if (mi->isDeclaration()) continue;
+        if (isIgnorable(&*mi)) continue;
 
         // check if this is the entry function
         if (mi->getName().equals(ENTRY_FUNC)) {
@@ -37,31 +39,30 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
             for (BasicBlock::iterator bbi = fi->begin(); bbi != fi->end(); bbi++) {
                 CallInst *ci = dyn_cast<CallInst>(&*bbi);
                 if (ci != NULL) {
+                    // store bb - ci pair
+                    bbInstMap.insert(pair<BasicBlock *, CallInst *>(&*fi, ci));
+
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
-                    if (mi->getName().equals("foo") || mi->getName().equals("indirect_foo")) {
-                        errs() << mi->getName() <<": ====print out===\n";
-                        ci->getArgOperand(ci->getNumOperands() - 1)->dump();
-                    }
                     if (callee == NULL) {
+                        // TODO: deal with indirect function calls
                         // this is an indirect call
                         /* ci->getCalledValue()->dump(); */
                         /* ci->getArgOperand(1)->dump(); */
-                        LoadInst *li = dyn_cast<LoadInst>(ci->getCalledValue());
-                        if (li != NULL) errs() << "YES\n";
+                        /* LoadInst *li = dyn_cast<LoadInst>(ci->getCalledValue()); */
+                        /* if (li != NULL) errs() << "YES\n"; */
                         for (auto ui = mi->user_begin(); ui != mi->user_end(); ui++) {
-                            /* errs() << ui->getName() << "\n"; */
-                            /* CallInst *_ci = dyn_cast<CallInst>(*ui); */
-                            /* Function *f3 = dyn_cast<Function>(_ci->getArgOperand(2)); */
-                            /* f3->dump(); */
-                            /* for (auto i = f3->arg_begin(); i != f3->arg_end(); ++i) { */
-                            /*     i->dump(); */
-                            /* } */
                         }
                         continue;
                     }
-                    if (callee->isDeclaration()) continue;
+
+                    // skip over library functions, priv_raise, and priv_lower
+                    if (isIgnorable(callee)) continue;
+
                     // add caller-callee relation into the call graph
                     addCallRelation(&*mi, callee);
+
+                    // add CallInst - Function map; TODO: to fix the function pointer problem
+                    callinstFuncMap.insert(pair<CallInst *, Function *>(ci, callee));
                 } 
             }
         }
@@ -70,7 +71,16 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
     // remove unrechable functions from main
     removeUnreachableFuncs(funcNodeMap[entryFunc]);
 
+    // get which functions can reach a priv function
+    /* funcReachPrivFunc(); */
+
     /* dump(); */
+}
+
+// ignore library function, priv_raise, and priv_lower
+bool PrivCallGraph::isIgnorable(Function *F) const {
+    if (F->isDeclaration() || F->getName().equals(PRIVRAISE) || F->getName().equals(PRIVLOWER)) return true;
+    else return false;
 }
 
 // return the Function a PrivCallGraphNode represents
@@ -135,7 +145,7 @@ void PrivCallGraph::removeNode(PrivCallGraphNode *node) {
 /*
  * removeUnreachableFuncs() removes all functions that can not be reached from main() function
  *
- * Start from the entry function, and do a DFS.
+ * Start from the entry function (main), and do a DFS.
  * */
 void PrivCallGraph::removeUnreachableFuncs(PrivCallGraphNode *entry) {
     unordered_set<PrivCallGraphNode *> reachable;
@@ -160,6 +170,8 @@ void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode
     reachable.insert(node);
     for (auto i = node->callees.begin(); i != node->callees.end(); i++) { DFS(*i, reachable); }
 }
+
+
 
 
 // check if a function exists in the call graph
@@ -197,6 +209,7 @@ void PrivCallGraph::dump() const {
     }
 }
 
+//
 // ===================================
 // implementation of PrivCallGraphNode
 // ===================================
@@ -217,9 +230,8 @@ bool PrivCallGraphNode::hasCallee(PrivCallGraphNode *callee) const {
     else return false;
 }
 
-Function* PrivCallGraphNode::getFunction() const {
-    return &F;
-}
+Function* PrivCallGraphNode::getFunction() const { return &F; }
+StringRef PrivCallGraphNode::getFuncName() const { return F.getName(); }
 
 /*
  * dump() prints out information of a PrivCallGraphNode.
@@ -250,4 +262,115 @@ inline void PrivCallGraphNode::addCaller(PrivCallGraphNode *caller) {
 }
 inline void PrivCallGraphNode::addCallee(PrivCallGraphNode *callee) {
     callees.insert(callee);
+}
+
+
+//
+// =========================
+// implementation of PrivCFG
+// =========================
+//
+
+// constructor
+// It maps a function's inheritance to a privCFG for this function
+PrivCFG::PrivCFG(Function &F) : F(F) {
+    for (Function::iterator fi = F.begin(); fi != F.end(); fi++) {
+        BasicBlock *bb = &*fi;
+
+        // mark entry block
+        if (bb == &(F.getEntryBlock())) entry = bb;
+
+        // add a node for this basic block
+        /* PrivCFGNode *node = addBBNode(bb); */
+        addBBNode(bb);
+
+        // add this node's predecessors and successors
+        for (BasicBlock *pred : predecessors(bb)) addInheritance(pred, bb);
+        for (BasicBlock *successor : successors(bb)) addInheritance(bb, successor);
+    }
+}
+
+void PrivCFG::addInheritance(BasicBlock *from, BasicBlock *to) {
+    PrivCFGNode *fromNode = addBBNode(from);
+    PrivCFGNode *toNode = addBBNode(to);
+
+    fromNode->successors.insert(toNode);
+    toNode->predecessors.insert(fromNode);
+}
+
+// add a new node in CFG
+PrivCFGNode *PrivCFG::addBBNode(BasicBlock *bb) {
+    if (bbNodeMap.find(bb) == bbNodeMap.end()) {
+        // add a new node
+        PrivCFGNode *node = new PrivCFGNode(bb);
+        bbNodeMap.insert(pair<BasicBlock *, PrivCFGNode *>(bb, node));
+
+        return node;
+    }
+
+    return bbNodeMap[bb];
+}
+
+/*
+ * removeNode() removes a node from its CFG and add link from all its predecessors to all its successors
+ * 1. remove corresponding item from bbNodeMap
+ * 2. remove it from all its predecessors's successor list
+ * 3. remove it from all its successors's predecessor list
+ * 4. add new inheritance 
+ * 5. free itself
+ * */
+void PrivCFG::removeNode(PrivCFGNode *node) {
+    BasicBlock *bb = node->bb;
+    // 1. remove item from bbNodeMap
+    bbNodeMap.erase(bb);
+
+    for (PrivCFGNode *predecessor : node->predecessors) {
+        //2. remove it from all its predecessors's successor list
+        predecessor->successors.erase(node);
+        for (PrivCFGNode *successor : node->successors) {
+            // 3. remove it from all its successors's predecessor list
+            successor->predecessors.erase(node);
+
+            // 4. add new inheritance
+            addInheritance(predecessor->bb, successor->bb);
+        }
+    }
+
+    // 5. free the node
+    delete node;
+}
+
+void PrivCFG::dump() const {
+    for (auto bbNode : bbNodeMap) bbNode.second->dump();
+}
+
+//
+// =========================
+// implementation of PrivCFG
+// =========================
+//
+PrivCFGNode::PrivCFGNode(BasicBlock *bb) : bb(bb) {
+
+}
+
+void PrivCFGNode::dump() const {
+    /* errs() << "Basic Block " << bb.getName() << ":\n"; */
+    errs() << "For Basic Block \n";
+    bb->dump();
+    errs() << "predecessors: ";
+    for (PrivCFGNode *pred : predecessors) {
+        pred->bb->dump();
+        /* errs() << pred->getBBName() << " "; */
+    }
+    errs() << "\n";
+    errs() << " successors: ";
+    for (PrivCFGNode *successor : successors) {
+        successor->bb->dump();
+        /* errs() << successor->getBBName() << " "; */
+    }
+    errs() << "\n\n";
+}
+
+StringRef PrivCFGNode::getBBName() const {
+    return bb->getName();
 }

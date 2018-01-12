@@ -31,19 +31,30 @@ struct CompressCFG : public ModulePass {
 public:
     static char ID;
 
+    // this module
+    Module *theModule;
+
+    // compressed call graph
+    CompressCG *CCG;
+
     // constructor
     CompressCFG();
 
+    // a compressed call graph
+    /* CompressCG &CCG; */
+
     //
-    unordered_map<Function *, PrivCFG *> funcPrivCFGMap;
+    unordered_map<Function *, PrivCFG *> funcCFGMap;
 
     // runOnModule
     virtual bool runOnModule(Module &M);
 
     //remove "unprivileged" basic blocks from all functions reachable from main.
-    void removeUnprivBB(CompressCG &CGG);
+    void removeUnprivBB(CompressCG &CCG);
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
+private:
+    void initializeCFG();
 };  // end of CompressCFG
 
 }  // end of namespace compressCFG
