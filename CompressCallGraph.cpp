@@ -2,9 +2,9 @@
  *
  *      The Automated Privileges Project
  *
- * This file implements the building of a compressed call graph, which only keeps functions that use privileges.
+ * This file implements the building of compressed call graphs, which only keep functions that use privileges.
  *
- * This pass keeps a copy of the original call graph of the target program. 
+ * This Pass keeps a copy of the original call graph of the target program. 
  * It also has compressed call graphs for all functions. A compressed call graph for a function 
  * has a source which represents the function;  each node in the compressed call graph 
  * except the source is some function that 
@@ -14,16 +14,17 @@
 
 
 #include "CompressCallGraph.h"
-#include <algorithm>
 
 using namespace llvm;
 using namespace compressCG;
-using namespace privCallGraph;
+using namespace privGraph;
 using namespace localAnalysis;
 using namespace privADT;
 
 // constructor
-CompressCG::CompressCG() : ModulePass(ID) {}
+CompressCG::CompressCG() : ModulePass(ID) {
+    /* errs() << "Hello from CompressCG's constructor!\n"; */
+}
 
 /* 
  * Speficy pass(es) that should be run before CompressCG:  LocalAnalysis
@@ -44,25 +45,9 @@ void CompressCG::getAnalysisUsage(AnalysisUsage &AU) const {
 bool CompressCG::runOnModule(Module &M) {
     errs() << "Hello from CompressCG Pass!\n";
 
-    CallGraph CG(M);
+    theModule = &M;
+    /* CallGraph CG(M); */
     /* CG.dump(); */
-    for (auto i = CG.begin(); i != CG.end(); i++) {
-        if (i->first == NULL) {
-            errs() << "found an NULL function\n";
-        }
-        /* const Function *f = dyn_cast<Function>(i->first); */
-        /* if (f != NULL) errs() << "YES IT IS\n"; */
-        /* else errs() << "NO\n"; */
-    }
-
-    /* errs() << "callingNode dump:\n"; */
-    CallGraphNode *callingNode = CG.getExternalCallingNode();
-    for (auto cni = callingNode->begin(); cni != callingNode->end(); cni++) cni->second->dump();
-    /* callingNode->dump(); */
-    /* errs() << "callsNode dump:\n"; */
-    /* CallGraphNode *callsNode = CG.getCallsExternalNode(); */
-    /* callsNode->dump(); */
-
 
     // get LocalAnalysis's result
     LocalAnalysis &LA = getAnalysis<LocalAnalysis>();
@@ -73,9 +58,21 @@ bool CompressCG::runOnModule(Module &M) {
     privCG = new PrivCallGraph(M);
     /* privCG->print(); */
 
-    // remove unreachable functions and blocks
-    removeUnreachableFuncs(privCG);
-    
+    // remove unreachable functions and blocks from funcCapMap
+    removeUnreachableFuncs();
+
+    // get all priv-functions a function can reach
+    getReachablePrivFunc();
+
+    /* errs() << "before removeUnprivFunc(), there are " << privCG->nodes.size() << " functions\n"; */
+    /* /1* printReachableFunc(); *1/ */
+    /* privCG->dump(); */
+    /* errs() << "after removeUnprivFunc(), there are " << privCG->nodes.size() << " functions\n"; */
+    /* /1* printReachablePrivFunc(); *1/ */
+    /* privCG->dump(); */
+
+    removeUnprivFunc();
+
     debugHelper(M);
     return false;
 }
@@ -84,9 +81,9 @@ bool CompressCG::runOnModule(Module &M) {
  * removeUnreachableFuncs() removes unreachable functions from funcCapMap.
  * It also remove basic blocks in those deleted functions, though the function name omits that.
  *
- * Actually, we don't need call this function to get correct a result for the whole analysis...
+ * Actually, we don't need call this function to get a correct result for the whole analysis...
  * */
-void CompressCG::removeUnreachableFuncs(PrivCallGraph *privCG) {
+void CompressCG::removeUnreachableFuncs() {
     // remove functions
     for (auto fcmi = funcCapMap.begin(); fcmi != funcCapMap.end();) {
         if (!privCG->hasFunction(fcmi->first)) funcCapMap.erase(fcmi++);
@@ -100,10 +97,74 @@ void CompressCG::removeUnreachableFuncs(PrivCallGraph *privCG) {
     }
 }
 
+/*
+ * funcReachPrivFunc() computes which priv-functions that a function can reach.
+ * For those functions that never reach a priv-function, they can be ignored when inlining callees in the
+ * control flow grap.
+ * */
+void CompressCG::getReachablePrivFunc() {
+    for (unordered_set<PrivCallGraphNode *>::iterator ni = privCG->nodes.begin(), nie = privCG->nodes.end();
+            ni != nie; ++ni) {
+        unordered_set<PrivCallGraphNode *> reachable, visited;
+        DFS(*ni, reachable, visited);
+        if (reachable.size() != 0) {
+            reachablePrivFunc.insert(pair<Function *, unordered_set<PrivCallGraphNode *>>(
+                        (*ni)->getFunction(), unordered_set<PrivCallGraphNode *>(reachable.begin(), reachable.end())));
+        }
+        // add reachable
+    }
+}
+/*
+ * This DFS is a helper function for getReachablePrivFunc().
+ * */
+void CompressCG::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable,
+                            unordered_set<PrivCallGraphNode *> &visited) {
+    if (visited.find(node) != visited.end()) return;
+    
+    visited.insert(node);
+    // if this furctions uses some privileges, add it to reachable
+    if (funcCapMap.find(node->getFunction()) != funcCapMap.end()) reachable.insert(node);
+
+    for (auto i = node->callees.begin(); i != node->callees.end(); i++) { DFS(*i, reachable, visited); }
+}
+
+// check if a function can reach a priv-function
+bool CompressCG::canReachPrivFunc(Function *F) const {
+    return reachablePrivFunc.find(F) != reachablePrivFunc.end();
+}
+
+/*
+ * removeUnprivFunc() removes "unprileged functions". 
+ * A function is unprivileged if it neither uses any privileges nor reaches any function which 
+ * uses privileges.
+ * */
+void CompressCG::removeUnprivFunc() {
+    unordered_set<PrivCallGraphNode *> unprivFuncNodes;
+    for (unordered_set<PrivCallGraphNode *>::iterator cgni = privCG->nodes.begin(); 
+            cgni != privCG->nodes.end(); cgni++) {
+        PrivCallGraphNode *node = *cgni;
+        if (reachablePrivFunc.find(node->getFunction()) == reachablePrivFunc.end()) {
+            // this function is unprivileged
+            unprivFuncNodes.insert(node);
+        }
+    }
+
+    for (auto ni = unprivFuncNodes.begin(); ni != unprivFuncNodes.end(); ni++) {
+        privCG->removeNode(*ni);
+    }
+
+
+    /* // equivalent implementation */
+    /* for (auto i = privCG->nodes.begin(); i != privCG->nodes.end(); i++) { */
+    /*     if (reachablePrivFunc.find(*i->getFunction()) == reachablePrivFunc.end()) privCG->removeNode(*i++); */
+    /*     else i++; */
+    /* } */
+
+}
 
 void CompressCG::debugHelper(Module &M) const {
     /* printAllFunc(M); */
-
+    /* printReachablePrivFunc(); */
 }
     
 // print all Function names and their addresses
@@ -113,6 +174,25 @@ void CompressCG::printAllFunc(Module &M) const {
         errs() << mi->getName() << ": " << &*mi << "\n";
     }
 }
+
+void CompressCG::printReachableFunc() const {
+    errs() << "reachable functions from main:\n";
+    for (auto i = privCG->nodes.begin(); i != privCG->nodes.end(); i++) {
+        errs() << (*i)->getFunction()->getName() << " ";
+    }
+    errs() << "\n";
+}
+void CompressCG::printReachablePrivFunc() const {
+    for (auto rpfi = reachablePrivFunc.begin(); rpfi != reachablePrivFunc.end(); rpfi++) {
+        errs() << "Function " << rpfi->first->getName() << " can reach: ";
+        for (auto fi = rpfi->second.begin(); fi != rpfi->second.end(); fi++) {
+            errs() << (*fi)->getFuncName() << " ";
+        }
+        errs() << "\n";
+    }
+}
+
+
 void CompressCG::printCallGraph(Module &M, llvm::CallGraph &CG) const {
     /* errs() << "call relations:\n"; */
     /* errs() << "external nodes:\n"; */

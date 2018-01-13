@@ -80,6 +80,8 @@ public:
     // print all node names and addresses
     void print() const;
 private:
+    friend struct CompressCG;
+
     // just add a PrivCallGraphNode for function F
     PrivCallGraphNode *addFunctionNode(Function *F);
 
@@ -155,6 +157,7 @@ public:
     // print out information of all basic blocks of a function
     void dump() const;
 private:
+    friend struct CompressCFG;
 };  // end of class PrivCFG
 
 /*

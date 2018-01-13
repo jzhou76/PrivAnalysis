@@ -1,12 +1,15 @@
-/* CompressedCallGraph.h
+/** CompressCallGraph.h
  *
  *     The Automated Privileges Project
  *
- * PrivAnalysis.h declares data and function types for PrivAnalysis pass.
+ * PrivAnalysis.h declares data and function types for CompressCallGraph pass.
  *
  * @author Jie Zhou
  *
  **/
+
+#ifndef COMPRESSED_CALL_GRAPH_H
+#define COMPRESSED_CALL_GRAPH_H
 
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
@@ -16,17 +19,15 @@
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Support/raw_ostream.h"
-#include "PrivCallGraph.h"
 
+#include "PrivGraph.h"
 #include "LocalAnalysis.h"
 #include "ADT.h"
 #include <unordered_map>
 
-#ifndef COMPRESSED_CALL_GRAPH_H
-#define COMPRESSED_CALL_GRAPH_H
 
 using namespace llvm;
-using namespace privCallGraph;
+using namespace privGraph;
 using namespace localAnalysis;
 using namespace privADT;
 
@@ -34,14 +35,20 @@ namespace compressCG {
 struct CompressCG : public ModulePass {
 public:
     static char ID;
+ 
+    // this module
+    Module *theModule;
 
     // map from function to CAPArray
     FuncCAPTable_t funcCapMap;
     // map from basic block to CAPArray
     BBCAPTable_t bbCapMap;
 
+    // original call graph
+    PrivCallGraph *privCG;
+
     // map a fucntion F to functions that use some privilege and are reachable from F
-    std::unordered_map<Function *, PrivCallGraphNode *> reachablePrivFunc;
+    std::unordered_map<Function *, unordered_set<PrivCallGraphNode *>> reachablePrivFunc;
 
     // constructor
     CompressCG();
@@ -54,14 +61,27 @@ public:
 
     // to some pass before this one
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
+
+    // check if F can reach a priv-function
+    bool canReachPrivFunc(Function *F) const;
 private:
-    PrivCallGraph *privCG;
 
     // remove unreachable functions from funcCapMap and bbCapMap
-    void removeUnreachableFuncs(PrivCallGraph *privCG);
+    void removeUnreachableFuncs();
+
+    // get which priv-functions a function can reach
+    void getReachablePrivFunc();
+    // helper function for getReachablePrivFunc()
+    void DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable, 
+                                     unordered_set<PrivCallGraphNode *> &visited);
+
+    // remove an unpriv-function
+    void removeUnprivFunc();
 
     void printAllFunc(Module &M) const;
     void printCallGraph(Module &M, llvm::CallGraph &CG) const;
+    void printReachablePrivFunc() const;
+    void printReachableFunc() const;
     void debugHelper(Module &M) const;
 };
 
