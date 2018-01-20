@@ -1,10 +1,7 @@
-/* CallGraph.h
+/* PrivGraph.h
  *
  *     The Automated Privileges Project
  *
- * This file implements PrivCallGraph class and PrivCallGraphNode class.
- *
- * PrivCallGraph only contains nodes corresponding to user-defined functions while ignores library functions.
  *
  * !TODO!: handle indirect function calls
  * */
@@ -188,6 +185,8 @@ void PrivCallGraph::print() const {
     }
     errs() << "\n";
 }
+
+//
 // print out call relations
 void PrivCallGraph::dump() const {
     errs() << "\nCalling relations of this program: \n";
@@ -206,6 +205,21 @@ void PrivCallGraph::dump() const {
         /* errs() << "\n"; */
         /* errs() << "\n"; */
         (*fni)->dump();
+    }
+}
+
+void PrivCallGraph::printSCCs() const {
+    errs() << "\nPrint SCCs\n";
+    unordered_set<PrivCGSCC *> printed;
+    for (pair<Function *, PrivCGSCC *> funcSCC : funcSCCMap) {
+        if (printed.find(funcSCC.second) != printed.end()) continue;
+
+        printed.insert(funcSCC.second);
+        errs() << "SCC: ";
+        for (Function *f : funcSCC.second->funcs) {
+            errs() << f->getName() << " ";
+        }
+        errs() << "\n";
     }
 }
 
@@ -263,6 +277,29 @@ inline void PrivCallGraphNode::addCaller(PrivCallGraphNode *caller) {
 inline void PrivCallGraphNode::addCallee(PrivCallGraphNode *callee) {
     callees.insert(callee);
 }
+
+//
+//===========================
+//implementation of PrivCGSCC
+//===========================
+//
+
+// constructor
+PrivCGSCC::PrivCGSCC() {}
+
+
+/*
+ * collectCaps() collects all privileges reachable from nodes in this SCC. 
+ * It has two steps. The first is to collect all privileges used in nodes in this SCC.
+ * The second is to collect privileges used in function not in this SCC but reachable from
+ * functions in this SCC.
+ * */
+void PrivCGSCC::collectCaps(FuncCAPTable_t &funcCapMap) {
+    for (Function *f : funcs) {
+        UnionCAPArrays(caps, funcCapMap[f]);
+    }
+}
+
 
 
 //

@@ -4,6 +4,13 @@
  *
  * PrivAnalysis.h declares data and function types for CompressCallGraph pass.
  *
+ * This Pass keeps a copy of the original call graph of the target program. 
+ * It also has compressed call graphs for all functions. A compressed call graph for a function 
+ * has a source which represents the function;  each node in the compressed call graph 
+ * except the source is some function that 
+ *  1. uses at least one privilege
+ *  2. reachable from the source function in the original call graph. 
+ *
  * @author Jie Zhou
  *
  **/
@@ -24,6 +31,7 @@
 #include "LocalAnalysis.h"
 #include "ADT.h"
 #include <unordered_map>
+#include <vector>
 
 
 using namespace llvm;
@@ -67,7 +75,7 @@ public:
 private:
 
     // remove unreachable functions from funcCapMap and bbCapMap
-    void removeUnreachableFuncs();
+    void removeUnneededFromCapTable();
 
     // get which priv-functions a function can reach
     void getReachablePrivFunc();
@@ -77,6 +85,13 @@ private:
 
     // remove an unpriv-function
     void removeUnprivFunc();
+    void forwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited, 
+                             vector<PrivCallGraphNode *> &order);
+    void backwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited,
+                        unordered_set<PrivCallGraphNode *> &processed);
+
+    // compute SCCs of the Call Graph
+    void computeSCCs();
 
     void printAllFunc(Module &M) const;
     void printCallGraph(Module &M, llvm::CallGraph &CG) const;

@@ -4,12 +4,7 @@
  *
  * This file implements the building of compressed call graphs, which only keep functions that use privileges.
  *
- * This Pass keeps a copy of the original call graph of the target program. 
- * It also has compressed call graphs for all functions. A compressed call graph for a function 
- * has a source which represents the function;  each node in the compressed call graph 
- * except the source is some function that 
- *  1. uses at least one privilege
- *  2. reachable from the source function in the original call graph. 
+ *
  * */
 
 
@@ -59,31 +54,29 @@ bool CompressCG::runOnModule(Module &M) {
     /* privCG->print(); */
 
     // remove unreachable functions and blocks from funcCapMap
-    removeUnreachableFuncs();
+    removeUnneededFromCapTable();
 
     // get all priv-functions a function can reach
     getReachablePrivFunc();
 
-    /* errs() << "before removeUnprivFunc(), there are " << privCG->nodes.size() << " functions\n"; */
-    /* /1* printReachableFunc(); *1/ */
-    /* privCG->dump(); */
-    /* errs() << "after removeUnprivFunc(), there are " << privCG->nodes.size() << " functions\n"; */
-    /* /1* printReachablePrivFunc(); *1/ */
-    /* privCG->dump(); */
-
+    // remove functions that neither use nor reach any privileges
     removeUnprivFunc();
+
+
+    // compute SCCs
+    computeSCCs();
 
     debugHelper(M);
     return false;
 }
 
 /*
- * removeUnreachableFuncs() removes unreachable functions from funcCapMap.
+ * removeUnneededFromCapTable() removes unreachable functions from funcCapMap.
  * It also remove basic blocks in those deleted functions, though the function name omits that.
  *
  * Actually, we don't need call this function to get a correct result for the whole analysis...
  * */
-void CompressCG::removeUnreachableFuncs() {
+void CompressCG::removeUnneededFromCapTable() {
     // remove functions
     for (auto fcmi = funcCapMap.begin(); fcmi != funcCapMap.end();) {
         if (!privCG->hasFunction(fcmi->first)) funcCapMap.erase(fcmi++);
@@ -162,9 +155,86 @@ void CompressCG::removeUnprivFunc() {
 
 }
 
+/*
+ * computeSCCs() gets all SCCs in this call graph.
+ * We only consider functions involved in recursive calls as nodes of a SCC, alghough strictly speaking
+ * every node in the call graph is a SCC.
+ *
+ * Currently we implement Kosaraju's algorithm to find all SCCs.
+ * Tarjan's algorithm is faster: it only does one DFS. However, it's tricker to implement than Kosaraju's algorithm.
+ * */
+void CompressCG::computeSCCs() {
+    vector<PrivCallGraphNode *> order;
+    unordered_set<PrivCallGraphNode *> visited;
+    
+    forwardDFS(privCG->getNode(privCG->entryFunc), visited, order);
+
+    errs() << "functions in the stack: \n";
+    for (int i = order.size() - 1; i >= 0; i--) {
+        errs() << order[i]->getFunction()->getName() << " ";
+    }
+    errs() << "\n";
+
+    unordered_set<PrivCallGraphNode *> processed;
+    while (!order.empty()) {
+        PrivCallGraphNode *node = order.back();
+        order.pop_back();
+
+        //skip processed node
+        if (processed.find(node) != processed.end()) continue;
+
+        // if hasn't processed this node
+        visited.clear();
+        backwardDFS(node, visited, processed);
+
+        // if there is only one 
+        if (visited.size() == 1 && !(*visited.begin())->hasCallee(*visited.begin())) continue;
+
+        PrivCGSCC *cgscc = new PrivCGSCC;
+        for (PrivCallGraphNode *node : visited) {
+            Function *f = node->getFunction();
+            cgscc->funcs.insert(f);
+            privCG->funcSCCMap.insert(pair<Function *, PrivCGSCC *>(f, cgscc));
+            /* processed.insert(node); */
+        }
+        // collect all privileges reachable from this SCC
+        cgscc->collectCaps(funcCapMap);
+    }
+
+    // print SCCs
+    /* privCG->printSCCs(); */
+}
+
+// a helper function for Kosaraju's algorithm
+void CompressCG::forwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited, 
+                                    vector<PrivCallGraphNode *> &order) {
+    if (visited.find(node) != visited.end()) return;
+    
+    visited.insert(node);
+    for (PrivCallGraphNode *callee : node->callees) forwardDFS(callee, visited, order);
+
+    order.push_back(node);
+}
+
+void CompressCG::backwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited,
+                                unordered_set<PrivCallGraphNode *> &processed) {
+    if (visited.find(node) != visited.end()) return;
+    
+    visited.insert(node);
+    processed.insert(node);
+    for (PrivCallGraphNode *caller : node->callers) {
+        if (processed.find(caller) == processed.end()) backwardDFS(caller, visited, processed);
+
+    }
+
+}
+
 void CompressCG::debugHelper(Module &M) const {
     /* printAllFunc(M); */
     /* printReachablePrivFunc(); */
+   
+    // dump calling relationship
+    privCG->dump();
 }
     
 // print all Function names and their addresses

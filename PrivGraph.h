@@ -2,7 +2,9 @@
  *
  *     The Automated Privileges Project
  *
- * This files privides interfaces to build a call graph of a program and control flow graph for all functions.
+ * CallGraph defines Call Graph and Control Flow Graph for a single function.
+ *
+ * PrivCallGraph only contains nodes corresponding to user-defined functions while ignores library functions.
  *
  * @author Jie Zhou
  *
@@ -32,6 +34,7 @@ using namespace privADT;
 
 namespace privGraph {
 class PrivCallGraphNode;
+class PrivCGSCC;
 
 /*
  * class: PrivCallGraph
@@ -60,6 +63,10 @@ public:
     // map a call instruction to the function it calls
     unordered_map<CallInst *, Function *> callinstFuncMap;
 
+    // SCC
+    unordered_set<PrivCGSCC *> sccs;
+    unordered_map<Function *, PrivCGSCC *> funcSCCMap;
+
     // get the PrivCallGraphNode by its Function
     PrivCallGraphNode *getNode(Function *F);
 
@@ -79,6 +86,9 @@ public:
 
     // print all node names and addresses
     void print() const;
+
+    // print SCC
+    void printSCCs() const;
 private:
     friend struct CompressCG;
 
@@ -116,11 +126,33 @@ public:
     // print information of this node
     void dump() const;
 
+
 private:
     friend class PrivCallGraph;
 
     inline void addCaller(PrivCallGraphNode *caller);
     inline void addCallee(PrivCallGraphNode *callee);
+};
+
+/*
+ * class PrivCGSCC: a SCC in a call graph
+ * */
+class PrivCGSCC {
+public:
+    PrivCGSCC();
+
+    // all functions in this SCC;
+    /* unordered_set<PrivCallGraphNode *> nodes; */
+    unordered_set<Function *> funcs;
+
+    // all privileges this SCC might use
+    CAPArray_t caps;
+
+    // an artificial basic block used when unfolding callees
+    BasicBlock *sccBB;
+
+    // get all reachable privileges
+    void collectCaps(FuncCAPTable_t &funcCapMap);
 };
 
 
