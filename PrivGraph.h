@@ -169,6 +169,8 @@ public:
 
     // entry block
     BasicBlock *entry;
+    // end block
+    BasicBlock *end;
 
     // map a basic block to a PRVCFGNode; 
     unordered_map<BasicBlock *, PrivCFGNode *> bbNodeMap;

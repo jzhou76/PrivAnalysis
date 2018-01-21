@@ -40,10 +40,7 @@ public:
     // constructor
     CompressCFG();
 
-    // a compressed call graph
-    /* CompressCG &CCG; */
-
-    //
+    // functions and their corresponding CFGs
     unordered_map<Function *, PrivCFG *> funcCFGMap;
 
     // runOnModule
@@ -54,6 +51,7 @@ public:
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 private:
+    // create nodes for all basic blocks
     void initializeCFG();
 };  // end of CompressCFG
 

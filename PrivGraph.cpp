@@ -29,7 +29,7 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
             entryFunc = &*mi;
             /* errs() << "#### main's address: " << entryFunc << "\n"; */
             addFunctionNode(entryFunc);
-        }
+        } 
 
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
             // iterate over every basic block
@@ -316,6 +316,7 @@ PrivCFG::PrivCFG(Function &F) : F(F) {
 
         // mark entry block
         if (bb == &(F.getEntryBlock())) entry = bb;
+        if (bb == &(F.back())) end = bb;
 
         // add a node for this basic block
         /* PrivCFGNode *node = addBBNode(bb); */
@@ -350,6 +351,7 @@ PrivCFGNode *PrivCFG::addBBNode(BasicBlock *bb) {
 
 /*
  * removeNode() removes a node from its CFG and add link from all its predecessors to all its successors
+ *
  * 1. remove corresponding item from bbNodeMap
  * 2. remove it from all its predecessors's successor list
  * 3. remove it from all its successors's predecessor list

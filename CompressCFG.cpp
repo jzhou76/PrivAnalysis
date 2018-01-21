@@ -52,10 +52,10 @@ void CompressCFG::initializeCFG() {
         // add Function - PrivCFG pair
         funcCFGMap.insert(pair<Function *, PrivCFG *>(F, privCFG));
 
-        // Mark which privileges a basic block uses; 
+        // Mark which privileges a basic block uses.
         // It makes more sense semantically if this step is done in the contructor of a PrivCFG.
         // However, PrivCFG is defined an another source file which is not a Pass. 
-        // Thus, it's not convinient to get the BasicBlock - privileges map from LocalAnalysis
+        // Thus, it's not convenient to get the BasicBlock - privileges map from LocalAnalysis.
         for (Function::iterator fi = F->begin(); fi != F->end(); fi++) {
             BasicBlock *bb = &*fi;
             if (CCG->bbCapMap.find(bb) != CCG->bbCapMap.end()) privCFG->bbNodeMap[bb]->caps = CCG->bbCapMap[bb];
@@ -69,8 +69,12 @@ void CompressCFG::initializeCFG() {
  * 1. it uses some privileges directly, or
  * 2. It calls some function which can reach a function using some privileges.
  *
- * Question: should entry block be skipped? 
- * No, because there'd multiple starting points of a function, which makes things messy.
+ * Question1: should entry block be skipped? 
+ * Yes, otherwise there might be multiple starting points of a function, which makes things messy.
+ *
+ * Question2: should the last block be kept if it doesn't use any privilege?
+ * Yes, otherwise there might be multiple ending points of a function, which makes things messy.
+ *
  * */
 void CompressCFG::removeUnprivBB(CompressCG &CCG) {
     PrivCallGraph *privCG = CCG.privCG;
@@ -78,14 +82,13 @@ void CompressCFG::removeUnprivBB(CompressCG &CCG) {
             fcfgmi != funcCFGMap.end(); fcfgmi++) {
         Function *F = fcfgmi->first;
         PrivCFG *privCFG = funcCFGMap[F];
-        if (F->getName().equals("main")) F->dump();
 
         for (Function::iterator fi = F->begin(); fi != F->end(); fi++) {
             BasicBlock *bb = &*fi;
             // for each basic block
             
             // keep the entry block of a function
-            if (bb == privCFG->entry) {
+            if (bb == privCFG->entry || bb == privCFG->end) {
                 continue;
             }
             
@@ -96,6 +99,9 @@ void CompressCFG::removeUnprivBB(CompressCG &CCG) {
         }
     }
 
+
+    Function *F = theModule->getFunction("main");
+    F->dump();
     errs() << "after removeUnprivBB():\n";
     for (auto funcCFG : funcCFGMap) {
         if (!funcCFG.first->getName().equals("main")) continue;
