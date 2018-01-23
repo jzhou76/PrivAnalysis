@@ -172,9 +172,7 @@ void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode
 
 // return a callee called from a basic block
 Function *PrivCallGraph::getCalleeFromBB(BasicBlock *bb) {
-    Function *callee = callinstFuncMap[bbInstMap[bb]];
-    assert(callee && "Cannot find callee from a basic block");
-    return callee;
+    return callinstFuncMap[bbInstMap[bb]];
 }
 
 
@@ -380,22 +378,39 @@ bool PrivCFGNode::hasSuccessor(PrivCFGNode *node) const {
 }
 
 
+// print SCCs of a CFG
+void PrivCFG::printSCCs() const {
+    errs() << "\n===== start of printing SCC(s) of the CFG of function " << F.getName() << " =====\n";
+
+    for (PrivCFGSCC *scc : sccs){
+        scc->dump();
+
+        errs() << "This SCC uses ";
+        for (uint64_t i = 0; i < CAP_TOTALNUM; i++) {
+            uint64_t loc = (uint64_t)1 << i;
+            if (loc & scc->caps) errs() << CAPString[i] << " ";
+        }
+
+    }
+
+    errs() << "\n===== end of printing SCC(s) of the CFG of function " << F.getName() << " =====\n\n";
+}
+
 void PrivCFG::dump() const {
     for (auto bbNode : bbNodeMap) bbNode.second->dump();
 }
 
 //
-// =========================
-// implementation of PrivCFG
-// =========================
+// =============================
+// implementation of PrivCFGNode
+// =============================
 //
-PrivCFGNode::PrivCFGNode(BasicBlock *bb) : bb(bb) {
-
-}
+// constructor
+PrivCFGNode::PrivCFGNode(BasicBlock *bb) : bb(bb) { }
 
 void PrivCFGNode::dump() const {
     /* errs() << "Basic Block " << bb.getName() << ":\n"; */
-    errs() << "For Basic Block \n";
+    errs() << "For Basic Block";
     bb->dump();
     errs() << "predecessors: ";
     for (PrivCFGNode *pred : predecessors) {
@@ -419,6 +434,17 @@ StringRef PrivCFGNode::getBBName() const {
 //
 //PrivCFGSCC
 //
-PrivCFGSCC::PrivCFGSCC() {
+PrivCFGSCC::PrivCFGSCC(Function &F) : F(F) { }
 
+
+//
+//
+// ============================
+// implementation of PrivCFGSCC
+// ============================
+//
+void PrivCFGSCC::dump() const {
+    for (BasicBlock *bb : bbs) {
+        bb->dump();
+    }
 }

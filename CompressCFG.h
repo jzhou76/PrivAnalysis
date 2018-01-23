@@ -55,6 +55,9 @@ public:
     //remove "unprivileged" basic blocks from all functions reachable from main.
     void removeUnprivBB();
 
+    // for debuging
+    void debuger() ;
+
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 private:
     // create nodes for all basic blocks

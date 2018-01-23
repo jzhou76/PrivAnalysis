@@ -38,9 +38,13 @@ bool CompressCFG::runOnModule(Module &M) {
     if (&M != theModule) errs() << "WTF????\n";
     initializeCFG();
 
+    // remove unprivileged basic blocks
     removeUnprivBB();
 
+    // get all SCCs of each CFG
     computeSCCs();
+
+    debuger();
 
     return false;
 }
@@ -105,6 +109,7 @@ void CompressCFG::removeUnprivBB() {
         }
     }
 
+    /* errs() << "=== finish removeUnprivBB() ===\n"; */
 
     /* Function *F = theModule->getFunction("main"); */
     /* F->dump(); */
@@ -121,7 +126,7 @@ void CompressCFG::removeUnprivBB() {
  * */
 void CompressCFG::computeSCCs() {
     for (pair<Function *, PrivCFG *> funcCFG : funcCFGMap) {
-        /* Function *f = funcCFG.first; */
+        Function *f = funcCFG.first;
         PrivCFG *cfg = funcCFG.second;
 
         vector<PrivCFGNode *> order;
@@ -146,20 +151,24 @@ void CompressCFG::computeSCCs() {
             // if there is only one node and it has no link to itself
             if (visited.size() == 1 && !node->hasPredecessor(node)) continue;
 
-
+            /* errs() << "find a SCC from " << f->getName() << "\n"; */
             // add these blocks into a new SCC and add this SCC to its corresponding CFG
-            PrivCFGSCC *scc = new PrivCFGSCC();
+            PrivCFGSCC *scc = new PrivCFGSCC(*f);
+            cfg->sccs.insert(scc);
             for (PrivCFGNode *node : visited) {
                 BasicBlock *bb = node->bb;
                 scc->bbs.insert(bb);
                 bbSCCMap.insert(pair<BasicBlock *, PrivCFGSCC *>(bb, scc));
             }
+            /* errs() << "; it has " << scc->bbs.size() << " basic block\n"; */
 
             // collect privileges used in this SCC
             collectSCCCaps(*scc);
         }
     }
 }
+// helper function for computeSCCs()
+// It is part of Kosaraju's allgorithm
 void CompressCFG::forwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &visited, vector<PrivCFGNode *> &order) {
     if (visited.find(node) != visited.end()) return;
 
@@ -168,7 +177,6 @@ void CompressCFG::forwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &vi
 
     order.push_back(node);
 }
-
 void CompressCFG::backwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &visited, 
                                 unordered_set<PrivCFGNode *> &processed) {
     if (visited.find(node) != visited.end()) return;
@@ -180,17 +188,21 @@ void CompressCFG::backwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &v
     }
 }
 
+
 /*
  * collectSCCCaps() collects all privileges used by basic blocks in this SCC and 
  * all privileges used in functions reachable from this SCC.
+ *
+ * @param scc is the target SCC.
  * */
 void CompressCFG::collectSCCCaps(PrivCFGSCC &scc) {
     BBCAPTable_t &bbCapMap = *CCG->bbCapMap;
-    Function *callee;
+    Function *callee;  // possible callees in basic blocks
+
     for (BasicBlock *bb : scc.bbs) {
-        /* UnionCAPArrays(scc.caps, */ 
         if (bbCapMap.find(bb) != bbCapMap.end()) UnionCAPArrays(scc.caps, bbCapMap[bb]);
         else if ((callee = CCG->privCG->getCalleeFromBB(bb))) {
+            assert(callee && "get null callee from getCalleeFromBB()");
             for (PrivCallGraphNode *cgNode : CCG->reachablePrivFunc[callee]) {
                 UnionCAPArrays(scc.caps, (*CCG->funcCapMap)[cgNode->getFunction()]);
             }
@@ -199,6 +211,15 @@ void CompressCFG::collectSCCCaps(PrivCFGSCC &scc) {
         }
     }
 }
+
+void CompressCFG::debuger() {
+
+    // print SCCs 
+    Function *f = theModule->getFunction("foo");
+    PrivCFG *cfg = funcCFGMap[f];
+    cfg->printSCCs();
+}
+
 
 // register this pass
 char CompressCFG::ID = 0;

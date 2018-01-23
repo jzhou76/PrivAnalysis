@@ -196,6 +196,9 @@ public:
 
     // print out information of all basic blocks of a function
     void dump() const;
+
+    // print SCCs of this CFG
+    void printSCCs() const;
 private:
     friend struct CompressCFG;
 };  // end of class PrivCFG
@@ -233,12 +236,18 @@ public:
  * */
 struct PrivCFGSCC {
 public:
-    PrivCFGSCC();
+    PrivCFGSCC(Function &F);
+
+    // corresponding function
+    Function &F;
     
     // basic blocks in this SCC
     set<BasicBlock *> bbs;
 
     CAPArray_t caps;
+
+    // dump this SCC's info
+    void dump() const;
 
 };  // end of class PrivCFGSCC
 
