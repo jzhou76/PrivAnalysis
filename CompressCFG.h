@@ -37,22 +37,36 @@ public:
     // compressed call graph
     CompressCG *CCG;
 
+    // basic block - privileges map
+
+
     // constructor
     CompressCFG();
 
     // functions and their corresponding CFGs
     unordered_map<Function *, PrivCFG *> funcCFGMap;
 
+    // basic block and their corresponding SCC if it is in a SCC
+    unordered_map<BasicBlock *, PrivCFGSCC *> bbSCCMap;
+
     // runOnModule
     virtual bool runOnModule(Module &M);
 
     //remove "unprivileged" basic blocks from all functions reachable from main.
-    void removeUnprivBB(CompressCG &CCG);
+    void removeUnprivBB();
 
     virtual void getAnalysisUsage(AnalysisUsage &AU) const;
 private:
     // create nodes for all basic blocks
     void initializeCFG();
+
+    // find all SCCs of a function
+    void computeSCCs();
+    void forwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &visited, vector<PrivCFGNode *> &order);
+    void backwardDFS(PrivCFGNode *node, unordered_set<PrivCFGNode *> &visited, unordered_set<PrivCFGNode *> &processed);
+    void collectSCCCaps(PrivCFGSCC &scc);
+
+    // find SCCs of this 
 };  // end of CompressCFG
 
 }  // end of namespace compressCFG

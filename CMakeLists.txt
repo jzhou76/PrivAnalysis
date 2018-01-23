@@ -1,8 +1,9 @@
 add_llvm_loadable_module(PrivAnalysis
-    PrivAnalysis.cpp
+    PrivGraph.cpp
     CompressCallGraph.cpp
-    PrivCallGraph.cpp
     CompressCFG.cpp
+    UnfoldCallee.cpp
+    PrivAnalysis.cpp
 
     ADT.cpp
     LocalAnalysis.cpp

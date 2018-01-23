@@ -48,9 +48,9 @@ public:
     Module *theModule;
 
     // map from function to CAPArray
-    FuncCAPTable_t funcCapMap;
+    FuncCAPTable_t *funcCapMap;
     // map from basic block to CAPArray
-    BBCAPTable_t bbCapMap;
+    BBCAPTable_t *bbCapMap;
 
     // original call graph
     PrivCallGraph *privCG;
@@ -72,8 +72,8 @@ public:
 
     // check if F can reach a priv-function
     bool canReachPrivFunc(Function *F) const;
-private:
 
+private:
     // remove unreachable functions from funcCapMap and bbCapMap
     void removeUnneededFromCapTable();
 
@@ -85,14 +85,17 @@ private:
 
     // remove an unpriv-function
     void removeUnprivFunc();
+
+    // compute SCCs of the Call Graph
+    void computeSCCs();
     void forwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited, 
                              vector<PrivCallGraphNode *> &order);
     void backwardDFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &visited,
                         unordered_set<PrivCallGraphNode *> &processed);
+    void collectSCCCaps(PrivCGSCC &scc);
 
-    // compute SCCs of the Call Graph
-    void computeSCCs();
 
+    // debuger helpers
     void printAllFunc(Module &M) const;
     void printCallGraph(Module &M, llvm::CallGraph &CG) const;
     void printReachablePrivFunc() const;

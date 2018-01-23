@@ -9,6 +9,7 @@
 
 #include "PrivAnalysis.h"
 #include "CompressCallGraph.h"
+#include "CompressCFG.h"
 #include "ADT.h"
 #include "LocalAnalysis.h"
 #include <sys/capability.h>
@@ -18,6 +19,7 @@ using namespace llvm;
 using namespace privADT;
 using namespace localAnalysis;
 using namespace compressCG;
+using namespace compressCFG;
 using namespace privAnalysis;
 
 void getFamiliar(Module &M);
@@ -56,7 +58,8 @@ bool PrivAnalysis::runOnModule(Module &M) {
  * */
 void PrivAnalysis::getAnalysisUsage(AnalysisUsage &AU) const {
     // run CompressCG pass first
-    AU.addRequired<CompressCG>();  
+    AU.addRequired<CompressCFG>();  
+    AU.addPreserved<CompressCFG>();
 
     // still don't fully get why we need this...
     AU.setPreservesAll();

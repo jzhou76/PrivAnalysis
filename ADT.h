@@ -27,6 +27,9 @@
 namespace llvm {
 namespace privADT {
 
+// capability number to string for ROSA
+const extern char *CAPString[CAP_TOTALNUM];
+
 // type definition
 
 // using 64bit long unsigned to represent all 37 capabilities

@@ -23,5 +23,8 @@ local:
 	@# run LocalAnalysis Pass
 	@opt -load $(BUILD_DIR)/lib/PrivAnalysis.so -LocalAnalysis < test.bc > test.bc.opt
 
+split:
+	@opt -load $(BUILD_DIR)/lib/PrivAnalysis.so -SplitBB < test.bc > test.bc.opt
+
 clean:
 	@rm *.bc *.ll *.o 2> /dev/null

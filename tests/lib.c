@@ -1,4 +1,5 @@
 #include "lib.h"
+#include "priv.h"
 #include <stdio.h>
 
 void uncalled_fun0() {
@@ -10,7 +11,9 @@ void uncalled_fun1() {
 }
 
 void f1() {
+    priv_raise(1, CAP_CHOWN);
     f2();
+    priv_lower(1, CAP_CHOWN);
     printf("hello from f1()\n");
     f3();
 }
@@ -18,6 +21,7 @@ void f2() {
     printf("hello from f2()\n");
     f5();
     f5();
+    /* f2(); */
 }
 
 void f3() {
@@ -36,8 +40,12 @@ void f5() {
 
     while (i < 10) {
         i++;
-        f4();
+        /* f4(); */
     }
+
+    priv_raise(2, CAP_CHOWN, CAP_FOWNER);
+    // .....
+    priv_lower(2, CAP_CHOWN, CAP_FOWNER);
 }
 
 

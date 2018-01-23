@@ -81,6 +81,7 @@ bool PrivCallGraph::isIgnorable(Function *F) const {
 }
 
 // return the Function a PrivCallGraphNode represents
+// Do we really need this?
 PrivCallGraphNode *PrivCallGraph::getNode(Function *F) {
     return funcNodeMap[F];
 }
@@ -169,6 +170,12 @@ void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode
 }
 
 
+// return a callee called from a basic block
+Function *PrivCallGraph::getCalleeFromBB(BasicBlock *bb) {
+    Function *callee = callinstFuncMap[bbInstMap[bb]];
+    assert(callee && "Cannot find callee from a basic block");
+    return callee;
+}
 
 
 // check if a function exists in the call graph
@@ -191,35 +198,32 @@ void PrivCallGraph::print() const {
 void PrivCallGraph::dump() const {
     errs() << "\nCalling relations of this program: \n";
     for (auto fni = nodes.begin(); fni != nodes.end(); fni++) {
-        /* PrivCallGraphNode *funcNode = *fni; */
-        /* Function *f = funcNode->getFunction(); */
-        /* errs() << f->getName() << " calls \n"; */
-        /* for (auto cni = funcNode->callees.begin(); cni != funcNode->callees.end(); cni++) { */
-        /*     errs() << (*cni)->getFunction()->getName() << " "; */
-        /* } */
-        /* errs() << "\n"; */
-        /* errs() << f->getName() << " is called by \n"; */
-        /* for (auto cni = funcNode->callers.begin(); cni != funcNode->callees.end(); cni++) { */
-        /*     errs() << (*cni)->getFunction()->getName() << " "; */
-        /* } */
-        /* errs() << "\n"; */
-        /* errs() << "\n"; */
         (*fni)->dump();
     }
 }
 
 void PrivCallGraph::printSCCs() const {
-    errs() << "\nPrint SCCs\n";
+    errs() << "\n===== start of printing Call Graph SCCs =====\n";
     unordered_set<PrivCGSCC *> printed;
     for (pair<Function *, PrivCGSCC *> funcSCC : funcSCCMap) {
-        if (printed.find(funcSCC.second) != printed.end()) continue;
+        PrivCGSCC *scc = funcSCC.second;
+        if (printed.find(scc) != printed.end()) continue;
 
-        printed.insert(funcSCC.second);
+        printed.insert(scc);
         errs() << "SCC: ";
-        for (Function *f : funcSCC.second->funcs) {
+        for (Function *f : scc->funcs) {
             errs() << f->getName() << " ";
         }
         errs() << "\n";
+
+        /* errs() << "CAPArray = " << scc->caps << " This SCC uses "; */
+        errs() << "This SCC uses ";
+        for (uint64_t i = 0; i < CAP_TOTALNUM; i++) {
+            uint64_t loc = ((uint64_t)1 << i);
+            /* uint64_t loc = (1 << i); */  // WRONG!
+            if (loc & scc->caps) errs() << CAPString[i] << " ";
+        }
+        errs() << "\n===== end of printing Call Graph SCCs =====\n\n";
     }
 }
 
@@ -288,18 +292,6 @@ inline void PrivCallGraphNode::addCallee(PrivCallGraphNode *callee) {
 PrivCGSCC::PrivCGSCC() {}
 
 
-/*
- * collectCaps() collects all privileges reachable from nodes in this SCC. 
- * It has two steps. The first is to collect all privileges used in nodes in this SCC.
- * The second is to collect privileges used in function not in this SCC but reachable from
- * functions in this SCC.
- * */
-void PrivCGSCC::collectCaps(FuncCAPTable_t &funcCapMap) {
-    for (Function *f : funcs) {
-        UnionCAPArrays(caps, funcCapMap[f]);
-    }
-}
-
 
 
 //
@@ -314,7 +306,7 @@ PrivCFG::PrivCFG(Function &F) : F(F) {
     for (Function::iterator fi = F.begin(); fi != F.end(); fi++) {
         BasicBlock *bb = &*fi;
 
-        // mark entry block
+        // mark entry and end block
         if (bb == &(F.getEntryBlock())) entry = bb;
         if (bb == &(F.back())) end = bb;
 
@@ -379,6 +371,15 @@ void PrivCFG::removeNode(PrivCFGNode *node) {
     delete node;
 }
 
+// check if a node has some predecessor or successor
+bool PrivCFGNode::hasPredecessor(PrivCFGNode *node) const {
+    return predecessors.find(node) != predecessors.end();
+}
+bool PrivCFGNode::hasSuccessor(PrivCFGNode *node) const {
+    return successors.find(node) != successors.end();
+}
+
+
 void PrivCFG::dump() const {
     for (auto bbNode : bbNodeMap) bbNode.second->dump();
 }
@@ -412,4 +413,12 @@ void PrivCFGNode::dump() const {
 
 StringRef PrivCFGNode::getBBName() const {
     return bb->getName();
+}
+
+
+//
+//PrivCFGSCC
+//
+PrivCFGSCC::PrivCFGSCC() {
+
 }

@@ -92,7 +92,8 @@ bool LocalAnalysis::runOnModule(Module &M)
         AddToFuncCAPTable(FuncCAPTable, CI->getParent()->getParent(), CAParray);
     }
 
-    collectFunc(M);
+    /* collectFunc(M); */
+    /* print(errs(), &M); */
     return false;
 }
 

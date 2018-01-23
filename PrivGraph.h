@@ -62,6 +62,7 @@ public:
     unordered_map<BasicBlock *, CallInst *> bbInstMap;
     // map a call instruction to the function it calls
     unordered_map<CallInst *, Function *> callinstFuncMap;
+    Function *getCalleeFromBB(BasicBlock *bb);
 
     // SCC
     unordered_set<PrivCGSCC *> sccs;
@@ -73,12 +74,12 @@ public:
     // check if a function exists in the call graph
     bool hasFunction(Function *F) const;
 
-
     // add caller-callee relation
     void addCallRelation(Function *caller, Function *callee);
     // delete a PrivCallGraphNode and all its relations
     void removeNode(PrivCallGraphNode *node);
 
+    // traverse the graph from main function
     static void DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable);
 
     // print call relations of the program
@@ -150,16 +151,18 @@ public:
 
     // an artificial basic block used when unfolding callees
     BasicBlock *sccBB;
-
-    // get all reachable privileges
-    void collectCaps(FuncCAPTable_t &funcCapMap);
 };
 
+
+//
+// declaration of CFG related classes
+//
 
 /*
  * class: PrivCFG
  * */
 class PrivCFGNode;
+struct PrivCFGSCC;
 class PrivCFG {
 public:
     PrivCFG(Function &F);
@@ -172,8 +175,11 @@ public:
     // end block
     BasicBlock *end;
 
-    // map a basic block to a PRVCFGNode; 
+    // map a basic block to a PrivCFGNode; 
     unordered_map<BasicBlock *, PrivCFGNode *> bbNodeMap;
+
+    // SCCs
+    set<PrivCFGSCC *> sccs;
 
     // this one will be set later in CompressCFG
     /* map<PrivCFGNode *, CAPArray_t> privNodeCapMap; */
@@ -212,13 +218,33 @@ public:
     set<PrivCFGNode *> predecessors;
     set<PrivCFGNode *> successors;
 
+    // check if a node has some predecessor or successor
+    bool hasPredecessor(PrivCFGNode *node) const;
+    bool hasSuccessor(PrivCFGNode *node) const;
+
     StringRef getBBName() const;
     // dump inheritance relation of this basic block
     void dump() const;
 
 };  // end of class PrivCFGNode
+
+/*
+ * struct PrivCFGSCC
+ * */
+struct PrivCFGSCC {
+public:
+    PrivCFGSCC();
+    
+    // basic blocks in this SCC
+    set<BasicBlock *> bbs;
+
+    CAPArray_t caps;
+
+};  // end of class PrivCFGSCC
+
 }  // end of privCallGraph namespace
 
 #endif  // end of namespace PRIV_GRAPH
+
 
 

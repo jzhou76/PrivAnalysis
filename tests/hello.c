@@ -13,8 +13,9 @@ void indirect_foo(int a, char (*fn)(int), char (*f2)(int)) {
 
 void foo(int a) {
     priv_raise(1, CAP_CHOWN);
-    f5();
     priv_lower(1, CAP_CHOWN);
+
+    f5();
 
     printf("a = %d\n", a);
     print_cap();
