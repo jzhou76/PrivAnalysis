@@ -21,13 +21,14 @@ using namespace privGraph;
 PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
     // build the original call graph
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
-        // skip over library functions
+        // skip over library functions and priv_raise/lower/lowerall
         if (isIgnorable(&*mi)) continue;
+
+        /* errs() << "processing function " << mi->getName() << "\n"; */
 
         // check if this is the entry function
         if (mi->getName().equals(ENTRY_FUNC)) {
             entryFunc = &*mi;
-            /* errs() << "#### main's address: " << entryFunc << "\n"; */
             addFunctionNode(entryFunc);
         } 
 
@@ -36,10 +37,10 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
             for (BasicBlock::iterator bbi = fi->begin(); bbi != fi->end(); bbi++) {
                 CallInst *ci = dyn_cast<CallInst>(&*bbi);
                 if (ci != NULL) {
-                    // store bb - ci pair
-                    bbInstMap.insert(pair<BasicBlock *, CallInst *>(&*fi, ci));
 
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
+
+
                     if (callee == NULL) {
                         // TODO: deal with indirect function calls
                         // this is an indirect call
@@ -58,6 +59,8 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
                     // add caller-callee relation into the call graph
                     addCallRelation(&*mi, callee);
 
+                    // store bb - ci pair
+                    bbInstMap.insert(pair<BasicBlock *, CallInst *>(&*fi, ci));
                     // add CallInst - Function map; TODO: to fix the function pointer problem
                     callinstFuncMap.insert(pair<CallInst *, Function *>(ci, callee));
                 } 
@@ -76,7 +79,9 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
 
 // ignore library function, priv_raise, and priv_lower
 bool PrivCallGraph::isIgnorable(Function *F) const {
-    if (F->isDeclaration() || F->getName().equals(PRIVRAISE) || F->getName().equals(PRIVLOWER)) return true;
+    if (F->isDeclaration() || F->getName().equals(PRIVRAISE)
+                           || F->getName().equals(PRIVLOWER) 
+                           || F->getName().equals(PRIVLOWERALL)) return true;
     else return false;
 }
 
@@ -146,6 +151,7 @@ void PrivCallGraph::removeNode(PrivCallGraphNode *node) {
  * Start from the entry function (main), and do a DFS.
  * */
 void PrivCallGraph::removeUnreachableFuncs(PrivCallGraphNode *entry) {
+    assert(entry && "lost main() function");
     unordered_set<PrivCallGraphNode *> reachable;
     unordered_set<PrivCallGraphNode *> unreachable;
     DFS(entry, reachable);
@@ -163,6 +169,8 @@ void PrivCallGraph::removeUnreachableFuncs(PrivCallGraphNode *entry) {
     for (auto i = unreachable.begin(); i != unreachable.end(); i++) removeNode(*i);
 }
 void PrivCallGraph::DFS(PrivCallGraphNode *node, unordered_set<PrivCallGraphNode *> &reachable) {
+    assert(node && "the node to be explored is NULL.");
+
     if (reachable.find(node) != reachable.end()) return;
 
     reachable.insert(node);
@@ -221,8 +229,8 @@ void PrivCallGraph::printSCCs() const {
             /* uint64_t loc = (1 << i); */  // WRONG!
             if (loc & scc->caps) errs() << CAPString[i] << " ";
         }
-        errs() << "\n===== end of printing Call Graph SCCs =====\n\n";
     }
+    errs() << "\n===== end of printing Call Graph SCCs =====\n\n";
 }
 
 //
@@ -355,9 +363,12 @@ void PrivCFG::removeNode(PrivCFGNode *node) {
 
     for (PrivCFGNode *predecessor : node->predecessors) {
         //2. remove it from all its predecessors's successor list
+        // skip itself; otherwise this node couldn't be removed
+        if (predecessor == node) continue; 
         predecessor->successors.erase(node);
         for (PrivCFGNode *successor : node->successors) {
             // 3. remove it from all its successors's predecessor list
+            if (successor == node) continue;  // skip itself to avoid dogged loop
             successor->predecessors.erase(node);
 
             // 4. add new inheritance

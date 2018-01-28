@@ -49,6 +49,8 @@ bool CompressCG::runOnModule(Module &M) {
     funcCapMap = &LA.FuncCAPTable;
     bbCapMap = &LA.BBCAPTable;
 
+    errs() << "There are " << bbCapMap->size() << " basic blocks that use privileges\n";
+
     // build the original call graph
     privCG = new PrivCallGraph(M);
     /* privCG->print(); */

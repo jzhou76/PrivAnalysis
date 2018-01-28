@@ -79,11 +79,16 @@ void CompressCFG::initializeCFG() {
  * 1. it uses some privileges directly, or
  * 2. It calls some function which can reach a function using some privileges.
  *
+ * Loops need extra attention. Because loop has a backedge, when a loop is compressed to only one basic block,
+ * even if this basic block doesn't use any privileges, it will not be delete by just linking its predecessors
+ * to its successors. 
+ *
  * Question1: should entry block be kept? 
  * Yes, otherwise there might be multiple starting points of a function, which makes things messy.
  *
  * Question2: should the last block be kept if it doesn't use any privilege?
  * Yes, otherwise there might be multiple ending points of a function, which makes things messy.
+ *
  *
  * */
 void CompressCFG::removeUnprivBB() {
@@ -105,6 +110,16 @@ void CompressCFG::removeUnprivBB() {
             if (!(CCG->bbCapMap->find(bb) != CCG->bbCapMap->end() ||
                  (CCG->canReachPrivFunc(privCG->getCalleeFromBB(bb))))) {
                 privCFG->removeNode(privCFG->bbNodeMap[bb]);
+            } else {
+                /* errs() << "\n==== from removeUnprivBB() =====\n"; */
+                /* Function *callee = privCG->getCalleeFromBB(bb); */
+                /* if (CCG->bbCapMap->find(bb) != CCG->bbCapMap->end()) { */
+                /*     errs() << "found a bb that uses some privileges\n"; */
+                /*     /1* bb->dump(); *1/ */
+                /* } else if (CCG->canReachPrivFunc(callee)) { */
+                /*     errs() << callee->getName() << "\n"; */
+                /* } */
+                /* errs() << "\n"; */
             }
         }
     }
@@ -113,7 +128,6 @@ void CompressCFG::removeUnprivBB() {
 
     /* Function *F = theModule->getFunction("main"); */
     /* F->dump(); */
-    /* errs() << "after removeUnprivBB():\n"; */
     /* for (auto funcCFG : funcCFGMap) { */
     /*     if (!funcCFG.first->getName().equals("main")) continue; */
     /*     funcCFG.second->dump(); */
@@ -202,12 +216,19 @@ void CompressCFG::collectSCCCaps(PrivCFGSCC &scc) {
     for (BasicBlock *bb : scc.bbs) {
         if (bbCapMap.find(bb) != bbCapMap.end()) UnionCAPArrays(scc.caps, bbCapMap[bb]);
         else if ((callee = CCG->privCG->getCalleeFromBB(bb))) {
-            assert(callee && "get null callee from getCalleeFromBB()");
             for (PrivCallGraphNode *cgNode : CCG->reachablePrivFunc[callee]) {
                 UnionCAPArrays(scc.caps, (*CCG->funcCapMap)[cgNode->getFunction()]);
             }
         } else {
-            assert(false && "Basic Blocks are not split as intended");
+            PrivCFG *cfg = funcCFGMap[bb->getParent()];
+            if (!(bb == cfg->entry || bb == cfg->end)) {
+                bb->dump();
+            }
+            assert((bb == cfg->entry || bb == cfg->end) && "Basic Blocks are not split as intended");
+            /* if (!(bb == cfg->entry || bb == cfg->end)) { */
+            /*     errs() << "Function " << cfg->F.getName() << "'s Basic Block are not split properly!\n"; */
+            /*     bb->dump(); */
+            /* } */
         }
     }
 }
@@ -215,7 +236,7 @@ void CompressCFG::collectSCCCaps(PrivCFGSCC &scc) {
 void CompressCFG::debuger() {
 
     // print SCCs 
-    Function *f = theModule->getFunction("foo");
+    Function *f = theModule->getFunction("main");
     PrivCFG *cfg = funcCFGMap[f];
     cfg->printSCCs();
 }
