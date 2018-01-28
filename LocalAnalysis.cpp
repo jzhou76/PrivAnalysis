@@ -65,7 +65,9 @@ bool LocalAnalysis::runOnModule(Module &M)
     ExtraJMPBB = SB.ExtraJMPBB;
   
     // find all users of targeted function
-    Function *F = M.getFunction(PRIVRAISE);
+    /* Function *F = M.getFunction(PRIVRAISE); */
+    // change it to priv_lower() because we want insert 
+    Function *F = M.getFunction(PRIVLOWER);  
     if (F == NULL) return false;
 
     // Protector: didn't find any function TARGET_FUNC
