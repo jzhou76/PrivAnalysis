@@ -62,6 +62,7 @@ public:
     unordered_map<BasicBlock *, CallInst *> bbInstMap;
     // map a call instruction to the function it calls
     unordered_map<CallInst *, Function *> callinstFuncMap;
+    // get the callee in a basic block
     Function *getCalleeFromBB(BasicBlock *bb);
 
     // SCC
@@ -147,7 +148,7 @@ public:
     unordered_set<Function *> funcs;
 
     // all privileges this SCC might use
-    CAPArray_t caps;
+    CAPArray_t caps = 0;   // DON'T FORGET INITIALIZATION
 
     // an artificial basic block used when unfolding callees
     BasicBlock *sccBB;
@@ -215,7 +216,7 @@ public:
     BasicBlock *bb;
 
     // privileges this basic block uses
-    CAPArray_t caps;
+    CAPArray_t caps = 0;
 
     // predecessors
     set<PrivCFGNode *> predecessors;
@@ -244,7 +245,7 @@ public:
     // basic blocks in this SCC
     set<BasicBlock *> bbs;
 
-    CAPArray_t caps;
+    CAPArray_t caps = 0;
 
     // dump this SCC's info
     void dump() const;

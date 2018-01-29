@@ -49,7 +49,7 @@ bool CompressCG::runOnModule(Module &M) {
     funcCapMap = &LA.FuncCAPTable;
     bbCapMap = &LA.BBCAPTable;
 
-    errs() << "There are " << bbCapMap->size() << " basic blocks that use privileges\n";
+    /* printBBPrivs(); */
 
     // build the original call graph
     privCG = new PrivCallGraph(M);
@@ -212,6 +212,8 @@ void CompressCG::computeSCCs() {
         }
 
         // collect all privileges reachable from this SCC
+        /* errs() << "collect privs for scc\n"; */
+        /* printFuncPrivs(); */
         collectSCCCaps(*cgscc);
     }
 
@@ -226,9 +228,15 @@ void CompressCG::computeSCCs() {
  * collect all privileges used in a SCC.
  * */
 void CompressCG::collectSCCCaps(PrivCGSCC &SCC) {
+    /* errs() << "\n=== before collecting privs for CG SCC ===\n"; */
+    /* dumpCAPArray(SCC.caps); */
+    /* errs() << "\n"; */
     for (PrivCallGraphNode *cgNode : reachablePrivFunc[*SCC.funcs.begin()]) {
         UnionCAPArrays(SCC.caps, (*funcCapMap)[cgNode->getFunction()]);
     }
+    /* errs() << "\n=== after collecting privs for CG SCC ===\n"; */
+    /* dumpCAPArray(SCC.caps); */
+    /* errs() << "\n"; */
 
     /* unordered_set<PrivCGSCC *> processed; // avoid redundant computation */
 
@@ -329,6 +337,27 @@ void CompressCG::printCallGraph(Module &M, llvm::CallGraph &CG) const {
         }
         errs() << "\n";
     }
+}
+
+// print out basic blocks and privileges they use
+void CompressCG::printBBPrivs() const {
+    errs() << "\n===== start of print bb-priv map =====\n";
+    errs() << "There are " << bbCapMap->size() << " basic blocks that use privileges\n";
+    for (auto i = bbCapMap->begin(); i != bbCapMap->end(); i++) {
+        errs() << "(from " << i->first->getParent()->getName() << ")\n";
+        i->first->dump();
+        dumpCAPArray(i->second);
+    }
+}
+
+void CompressCG::printFuncPrivs() const {
+    errs() << "\n===== start of print func-priv map =====\n";
+    errs() << "There are " << funcCapMap->size() << " functions that use privileges\n";
+    for (auto i = funcCapMap->begin(); i != funcCapMap->end(); i++) {
+        errs() << "for function " << i->first->getName() << "\n";
+        dumpCAPArray(i->second);
+    }
+
 }
 
 

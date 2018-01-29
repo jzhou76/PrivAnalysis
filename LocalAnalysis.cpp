@@ -8,7 +8,8 @@
 
 #include "ADT.h"
 #include "LocalAnalysis.h"
-#include "SplitBB.h"
+#include "SplitBasicBlock.h"
+/* #include "SplitBB.h" */
 
 #include <linux/capability.h>
 #include <map>
@@ -49,6 +50,7 @@ void LocalAnalysis::RetrieveAllCAP(CallInst *CI, CAPArray_t &CAPArray)
         unsigned int iarg = I->getZExtValue();
 
         // Add it to the array
+        /* CAPArray |= (uint64_t)1 << iarg; */
         CAPArray |= 1 << iarg;
     }
 }
@@ -60,15 +62,17 @@ bool LocalAnalysis::runOnModule(Module &M)
 {
     errs() << "Hello from LocalAnalysis Pass!\n";
     // retrieve all data for later use
-    SplitBB &SB = getAnalysis<SplitBB>();
-    BBFuncTable = SB.BBFuncTable;
-    ExtraJMPBB = SB.ExtraJMPBB;
+    /* SplitBB &SB = getAnalysis<SplitBB>(); */
+    /* BBFuncTable = SB.BBFuncTable; */
+    /* ExtraJMPBB = SB.ExtraJMPBB; */
   
     // find all users of targeted function
     /* Function *F = M.getFunction(PRIVRAISE); */
     // change it to priv_lower() because we want insert 
     Function *F = M.getFunction(PRIVLOWER);  
     if (F == NULL) return false;
+    
+    /* for (auto i = M.begin(); i != M.end(); i++) errs() << i->getName() << "\n"; */
 
     // Protector: didn't find any function TARGET_FUNC
     /* assert(F && "Didn't find function PRIV_RAISE function"); */
@@ -95,7 +99,7 @@ bool LocalAnalysis::runOnModule(Module &M)
     }
 
     /* collectFunc(M); */
-    /* print(errs(), &M); */
+    print(errs(), &M);
     return false;
 }
 

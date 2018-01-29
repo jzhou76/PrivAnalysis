@@ -89,7 +89,6 @@ void CompressCFG::initializeCFG() {
  * Question2: should the last block be kept if it doesn't use any privilege?
  * Yes, otherwise there might be multiple ending points of a function, which makes things messy.
  *
- *
  * */
 void CompressCFG::removeUnprivBB() {
     PrivCallGraph *privCG = CCG->privCG;
@@ -114,25 +113,21 @@ void CompressCFG::removeUnprivBB() {
                 /* errs() << "\n==== from removeUnprivBB() =====\n"; */
                 /* Function *callee = privCG->getCalleeFromBB(bb); */
                 /* if (CCG->bbCapMap->find(bb) != CCG->bbCapMap->end()) { */
-                /*     errs() << "found a bb that uses some privileges\n"; */
-                /*     /1* bb->dump(); *1/ */
+                /*     errs() << "found a bb(from " << F->getName() << ") that uses some privileges\n"; */
+                /*     bb->dump(); */
                 /* } else if (CCG->canReachPrivFunc(callee)) { */
                 /*     errs() << callee->getName() << "\n"; */
                 /* } */
                 /* errs() << "\n"; */
             }
         }
+
+        /* errs() << "after removeUnprivBB() for " << F->getName() */ 
+        /*     << ", " << privCFG->bbNodeMap.size() << " basic blocks left\n"; */
+        /* for (auto i = privCFG->bbNodeMap.begin(); i != privCFG->bbNodeMap.end(); i++) i->first->dump(); */
     }
 
     /* errs() << "=== finish removeUnprivBB() ===\n"; */
-
-    /* Function *F = theModule->getFunction("main"); */
-    /* F->dump(); */
-    /* for (auto funcCFG : funcCFGMap) { */
-    /*     if (!funcCFG.first->getName().equals("main")) continue; */
-    /*     funcCFG.second->dump(); */
-    /* } */
-
 }
 
 /*
@@ -225,10 +220,6 @@ void CompressCFG::collectSCCCaps(PrivCFGSCC &scc) {
                 bb->dump();
             }
             assert((bb == cfg->entry || bb == cfg->end) && "Basic Blocks are not split as intended");
-            /* if (!(bb == cfg->entry || bb == cfg->end)) { */
-            /*     errs() << "Function " << cfg->F.getName() << "'s Basic Block are not split properly!\n"; */
-            /*     bb->dump(); */
-            /* } */
         }
     }
 }

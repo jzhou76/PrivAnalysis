@@ -100,6 +100,8 @@ private:
     void printCallGraph(Module &M, llvm::CallGraph &CG) const;
     void printReachablePrivFunc() const;
     void printReachableFunc() const;
+    void printBBPrivs() const;
+    void printFuncPrivs() const;
     void debugHelper(Module &M) const;
 };
 

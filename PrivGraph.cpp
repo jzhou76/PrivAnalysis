@@ -40,11 +40,15 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
 
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
 
-
                     if (callee == NULL) {
                         // TODO: deal with indirect function calls
                         // this is an indirect call
-                        /* ci->getCalledValue()->dump(); */
+                        errs() << "found an indirect call\n";
+                        errs() << "ci->dump():\n";
+                        ci->dump();
+                        errs() << "ci->getCalledValue()->dump()\n";
+                        ci->getCalledValue()->dump();
+                        errs() << "\n";
                         /* ci->getArgOperand(1)->dump(); */
                         /* LoadInst *li = dyn_cast<LoadInst>(ci->getCalledValue()); */
                         /* if (li != NULL) errs() << "YES\n"; */
