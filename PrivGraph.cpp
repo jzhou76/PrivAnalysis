@@ -23,6 +23,7 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         // skip over library functions and priv_raise/lower/lowerall
         if (isIgnorable(&*mi)) continue;
+        Function &F = *mi;
 
         /* errs() << "processing function " << mi->getName() << "\n"; */
 
@@ -37,23 +38,33 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
             for (BasicBlock::iterator bbi = fi->begin(); bbi != fi->end(); bbi++) {
                 CallInst *ci = dyn_cast<CallInst>(&*bbi);
                 if (ci != NULL) {
-
                     Function *callee = dyn_cast<Function>(ci->getCalledValue()->stripPointerCasts());
 
                     if (callee == NULL) {
                         // TODO: deal with indirect function calls
                         // this is an indirect call
-                        errs() << "found an indirect call\n";
-                        errs() << "ci->dump():\n";
+                        errs() << "found an indirect call in function " << F.getName() << "\n";
+                        errs() << "ci->dump(): ";
                         ci->dump();
-                        errs() << "ci->getCalledValue()->dump()\n";
-                        ci->getCalledValue()->dump();
-                        errs() << "\n";
-                        /* ci->getArgOperand(1)->dump(); */
+                        /* errs() << "ci->getCalledValue()->dump(): "; */
+                        /* Value *value = ci->getCalledValue(); */
+                        /* value->dump(); */
+                        /* Argument *arg = dyn_cast<Argument>(value); */
+                        /* if (arg->hasName()) { */
+                        /*     errs() << "name = " << arg->getName() << "\n"; */
+                        /* } */
+                        /* if (arg != NULL) errs() << "value is also an argument \n"; */
+                        /* errs() << "arg's parent is " << arg->getParent()->getName() << "\n"; */
+                        /* for (auto ai = F.arg_begin(); ai != F.arg_end(); ai++) { */
+                        /*     Argument *argument = &*ai; */
+                        /*     if (argument == arg) errs() << "gotcha!\n"; */
+                        /* } */
+
+                        /* errs() << "\n"; */
+
+
+                        /* ci->getArgOperand(1)->dump(); */  
                         /* LoadInst *li = dyn_cast<LoadInst>(ci->getCalledValue()); */
-                        /* if (li != NULL) errs() << "YES\n"; */
-                        for (auto ui = mi->user_begin(); ui != mi->user_end(); ui++) {
-                        }
                         continue;
                     }
 
@@ -67,18 +78,37 @@ PrivCallGraph::PrivCallGraph(Module &M) : M(M) {
                     bbInstMap.insert(pair<BasicBlock *, CallInst *>(&*fi, ci));
                     // add CallInst - Function map; TODO: to fix the function pointer problem
                     callinstFuncMap.insert(pair<CallInst *, Function *>(ci, callee));
+
+                    // indirect call
+                    if (callee->getName().equals("indirect_foo")) {
+                        errs() << "~~~~~ for indirect_foo ~~~~~~\n";
+                        /* for (auto i = callee->arg_begin(); i != callee->arg_end(); i++) { */
+                        /*     i->dump(); */
+                        /* } */
+                        for (unsigned i = 0; i < ci->getNumArgOperands(); i++) {
+                            Function *fp = dyn_cast<Function>(ci->getArgOperand(i));
+                            if (fp != NULL) fp->dump();
+                        }
+                        errs() << "~~~~~ end of indirect_foo ~~~~~\n\n";
+                    }
+
                 } 
             }
         }
     }
 
+    numOfAllFunctions = funcNodeMap.size();
     // remove unrechable functions from main
     removeUnreachableFuncs(funcNodeMap[entryFunc]);
+
+    numOfFuncBeforeCompression = funcNodeMap.size();
 
     // get which functions can reach a priv function
     /* funcReachPrivFunc(); */
 
     /* dump(); */
+
+    // indirect call related
 }
 
 // ignore library function, priv_raise, and priv_lower
@@ -212,6 +242,7 @@ void PrivCallGraph::dump() const {
     }
 }
 
+// print SCCs of the call graph
 void PrivCallGraph::printSCCs() const {
     errs() << "\n===== start of printing Call Graph SCCs =====\n";
     unordered_set<PrivCGSCC *> printed;

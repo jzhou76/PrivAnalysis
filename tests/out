@@ -1,144 +1,26 @@
 Hello from LocalAnalysis Pass!
 Hello from CompressCG Pass!
-functions in the stack: 
-main foo f2 f5 f1 f3 f4 
+There are 7 basic blocks that use privileges
+Function foo can reach: foo f5 
+Function main can reach: foo f5 f1 
+Function f2 can reach: f5 
+Function f1 can reach: f1 f5 
+Function f5 can reach: f5 
+
+===== start of printing Call Graph SCCs =====
+SCC: f5 
+This SCC uses CapChown CapFowner 
+===== end of printing Call Graph SCCs =====
+
 Hello from CompressCFG Pass!
+after removeUnprivBB() for foo, 4 left
+after removeUnprivBB() for main, 7 left
+after removeUnprivBB() for f2, 3 left
+after removeUnprivBB() for f1, 4 left
+after removeUnprivBB() for f5, 3 left
 
-; Function Attrs: nounwind uwtable
-define i32 @main(i32 %argc, i8** %argv) #0 {
-entry:
-  %retval = alloca i32, align 4
-  %argc.addr = alloca i32, align 4
-  %argv.addr = alloca i8**, align 8
-  store i32 0, i32* %retval
-  store i32 %argc, i32* %argc.addr, align 4
-  store i8** %argv, i8*** %argv.addr, align 8
-  br label %0
+===== start of printing SCC(s) of the CFG of function main =====
 
-; <label>:0                                       ; preds = %entry
-  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([17 x i8], [17 x i8]* @.str.1, i32 0, i32 0))
-  br label %1
-
-; <label>:1                                       ; preds = %0
-  br label %2
-
-; <label>:2                                       ; preds = %1
-  call void @foo(i32 10)
-  br label %3
-
-; <label>:3                                       ; preds = %2
-  call void (...) bitcast (void ()* @f1 to void (...)*)()
-  %4 = load i32, i32* %argc.addr, align 4
-  %cmp = icmp sgt i32 %4, 2
-  br i1 %cmp, label %if.then, label %if.else
-
-if.then:                                          ; preds = %3
-  %call1 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([32 x i8], [32 x i8]* @.str.2, i32 0, i32 0))
-  br label %5
-
-; <label>:5                                       ; preds = %if.then
-  br label %if.end
-
-if.else:                                          ; preds = %3
-  %call2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([36 x i8], [36 x i8]* @.str.3, i32 0, i32 0))
-  br label %6
-
-; <label>:6                                       ; preds = %if.else
-  br label %if.end
-
-if.end:                                           ; preds = %6, %5
-  call void (...) bitcast (void ()* @f2 to void (...)*)()
-  br label %7
-
-; <label>:7                                       ; preds = %if.end
-  call void @indirect_foo(i32 10, i8 (i32)* @baz, i8 (i32)* @baz)
-  br label %8
-
-; <label>:8                                       ; preds = %7
-  ret i32 0
-}
-
-after removeUnprivBB():
-For Basic Block 
-
-if.end:                                           ; preds = %6, %5
-  call void (...) bitcast (void ()* @f2 to void (...)*)()
-  br label %7
-
-predecessors: 
-; <label>:3                                       ; preds = %2
-  call void (...) bitcast (void ()* @f1 to void (...)*)()
-  %4 = load i32, i32* %argc.addr, align 4
-  %cmp = icmp sgt i32 %4, 2
-  br i1 %cmp, label %if.then, label %if.else
-
-
- successors: 
-
-For Basic Block 
-
-entry:
-  %retval = alloca i32, align 4
-  %argc.addr = alloca i32, align 4
-  %argv.addr = alloca i8**, align 8
-  store i32 0, i32* %retval
-  store i32 %argc, i32* %argc.addr, align 4
-  store i8** %argv, i8*** %argv.addr, align 8
-  br label %0
-
-predecessors: 
- successors: 
-; <label>:2                                       ; preds = %1
-  call void @foo(i32 10)
-  br label %3
-
-
-
-For Basic Block 
-
-; <label>:2                                       ; preds = %1
-  call void @foo(i32 10)
-  br label %3
-
-predecessors: 
-entry:
-  %retval = alloca i32, align 4
-  %argc.addr = alloca i32, align 4
-  %argv.addr = alloca i8**, align 8
-  store i32 0, i32* %retval
-  store i32 %argc, i32* %argc.addr, align 4
-  store i8** %argv, i8*** %argv.addr, align 8
-  br label %0
-
-
- successors: 
-; <label>:3                                       ; preds = %2
-  call void (...) bitcast (void ()* @f1 to void (...)*)()
-  %4 = load i32, i32* %argc.addr, align 4
-  %cmp = icmp sgt i32 %4, 2
-  br i1 %cmp, label %if.then, label %if.else
-
-
-
-For Basic Block 
-
-; <label>:3                                       ; preds = %2
-  call void (...) bitcast (void ()* @f1 to void (...)*)()
-  %4 = load i32, i32* %argc.addr, align 4
-  %cmp = icmp sgt i32 %4, 2
-  br i1 %cmp, label %if.then, label %if.else
-
-predecessors: 
-; <label>:2                                       ; preds = %1
-  call void @foo(i32 10)
-  br label %3
-
-
- successors: 
-if.end:                                           ; preds = %6, %5
-  call void (...) bitcast (void ()* @f2 to void (...)*)()
-  br label %7
-
-
+===== end of printing SCC(s) of the CFG of function main =====
 
 Hello from PrivAnalysis pass!

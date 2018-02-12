@@ -202,7 +202,7 @@ void dumpCAPTable(const FuncCAPTable_t &CT)
     for (auto mi = CT.begin(), me = CT.end();
          mi != me; ++ mi){
 
-        errs() << mi->first->getName() << " Privileges:\t";
+        errs() << mi->first->getName() << " uses privileges:\t";
 
         // iterate through cap array
         for (int i = 0; i < CAP_TOTALNUM; ++i) {

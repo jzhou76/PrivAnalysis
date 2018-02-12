@@ -10,4 +10,7 @@ void f3();
 void f4();
 void f5();
 
+void middle_priv_func();
+void priv_func();
+
 #endif

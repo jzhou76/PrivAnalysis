@@ -6,40 +6,80 @@
 
 void foo(int a);
 
-void indirect_foo(int a, char (*fn)(int), char (*f2)(int)) {
-    fn(10);
-    f2(20);
-}
+void indirect_foo(int a, char (*ifunc0)(float, long), int (*ifunc1)(int)) {
+    ifunc1(10);
+    int i = 0;
+    printf("i = %d\n", i);
+    f5();
+    ifunc0(20, 30);
 
-void foo(int a) {
     priv_raise(1, CAP_CHOWN);
+    printf("~~~~\n");
     priv_lower(1, CAP_CHOWN);
 
     f5();
 
     printf("a = %d\n", a);
     print_cap();
-    return;
+
+    int j = a;
+    while (j-- > 1) {
+        printf("this while will be deleted from CFG\n");
+        f3();
+        
+        /* break; */
+    }
+}
+
+void foo(int a) {
+    priv_raise(1, CAP_CHOWN);
+    printf("~~~~\n");
+    priv_lower(1, CAP_CHOWN);
+
+    f5();
+
+    printf("a = %d\n", a);
+    print_cap();
+
+    int i = a;
+    while (i-- > 1) {
+        printf("this while will be deleted from CFG\n");
+        f3();
+        
+        /* break; */
+    }
+
+    /* while (a > 1) { */
+    /*     priv_raise(1, CAP_KILL); */
+    /*     priv_lower(1, CAP_KILL); */
+
+    /*     f5(); */
+
+    /*     if (a > 1) middle_priv_func(); */
+    /*     else break; */
+    /* } */
+
+    /* return; */
 }
 
 // an "external" function
-char baz(int a) {
-    int b = a + 1;
-    foo(b);
+char baz(float a, long b) {
+    int c = (int)a + (int)b;
+    foo(c);
     return 'c';
 }
 
-void bar(int b) {
+int bar(int b) {
     priv_raise(1, CAP_CHOWN);
     foo(b);
     priv_lower(1, CAP_CHOWN);
     /* some_fun0(); */
-    return;
+    return 0;
 }
 
 int main(int argc, char *argv[]) {
     printf("hello from test\n");
-    foo(10);
+    foo(argc);
     
     f1();
     /* cap_t cap; */
@@ -56,7 +96,7 @@ int main(int argc, char *argv[]) {
     /* some_fun0(); */
 
     // call a function with function pointers
-    indirect_foo(10, &baz, &baz);
+    indirect_foo(argc, &baz, &bar);
 
     return 0;
 }

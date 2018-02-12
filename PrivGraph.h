@@ -55,6 +55,9 @@ public:
     // map a Function to a PrivCallGraphNode
     unordered_map<Function *, PrivCallGraphNode *> funcNodeMap;
 
+    unsigned numOfAllFunctions = 0;  
+    unsigned numOfFuncBeforeCompression = 0;
+
     // entry function, aka main
     Function *entryFunc;
 

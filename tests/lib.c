@@ -17,16 +17,16 @@ void f1() {
     printf("hello from f1()\n");
     f3();
 }
+
 void f2() {
     printf("hello from f2()\n");
-    f5();
     f5();
     /* f2(); */
 }
 
 void f3() {
     printf("hello from f3()\n");
-    f4();
+    /* f4(); */
 }
 
 void f4() {
@@ -43,9 +43,22 @@ void f5() {
         /* f4(); */
     }
 
+    f5();
+
     priv_raise(2, CAP_CHOWN, CAP_FOWNER);
     // .....
+    printf("....");
     priv_lower(2, CAP_CHOWN, CAP_FOWNER);
+}
+
+void middle_priv_func() {
+    priv_func();
+}
+
+void priv_func() {
+    priv_raise(1, CAP_FSETID);
+    // .....
+    priv_lower(1, CAP_FSETID);
 }
 
 

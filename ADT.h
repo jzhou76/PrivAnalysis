@@ -22,6 +22,7 @@
 #define TARGET_FUNC  "priv_raise"
 #define PRIVRAISE    "priv_raise"
 #define PRIVLOWER    "priv_lower"
+#define PRIVLOWERALL "priv_lowerall"
 #define CAP_TOTALNUM (CAP_LAST_CAP + 1)
 
 namespace llvm {
